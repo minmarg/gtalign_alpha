@@ -1,5 +1,5 @@
 ![Header image](imgs/gtalign_header.jpg)
-*3BV8\_A and 1D8J\_A (colored; left and right, respectively) superimposed on 7CZ9\_B (grey). Green, GTalign superposition; red, TM-align superposition.*
+*3BV8\_A and 1D8J\_A (colored; left and right, respectively) superimposed on 7CZ9\_B (grey). Green, GTalign superposition; red, TM-align superposition. The GTalign output file for this example is available [Here](out/2021-09-18_00000039_1__0.md).*
 
 # GTalign (alpha release)
 
