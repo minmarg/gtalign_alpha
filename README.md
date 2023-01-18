@@ -13,6 +13,11 @@ superposition and search method.
 
 ## Features to come
 
+## Contacts
+
+If you have questions, please contact Mindaugas Margelevicius at
+[mindaugas.margelevicius@bti.vu.lt](mailto:mindaugas.margelevicius@bti.vu.lt).
+
 ## License
 
 Copyright 2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
