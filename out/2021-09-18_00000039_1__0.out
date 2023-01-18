@@ -1,0 +1,119 @@
+gtalign 0.01.00                            Wed Jan 18 10:44:09 2023
+
+
+
+ Command line:
+/home/mindaugas/projects/share/gtalign/bin/gtalign -v --qrs=2021-09-18_00000039_1.pdb --rfs=/home/mindaugas/projects/data/pdb20_211110/pdb20_211110_pdb/3BV8_A.ent,/home/mindaugas/projects/data/pdb20_211110/pdb20_211110_pdb/1D8J_A.ent -o out4git --dev-queries-total-length-per-chunk=1500 --dev-max-length=10000
+
+ Query (1042 residues):
+2021-09-18_00000039_1.pdb Chn:B (M:0)
+
+ Searched:
+/home/mindaugas/projects/data/pdb20_211110/pdb20_211110_pdb/1D8J_A.ent
+/home/mindaugas/projects/data/pdb20_211110/pdb20_211110_pdb/3BV8_A.ent
+             2 structure(s)
+             165 total residues
+
+ Legend:
+TM-score (Refn./Query), Reference/Query length-normalized TM-score
+d0 (Refn./Query), Normalizing inter-residue distance d0 for Reference/Query
+RMSD, Root-mean-square deviation (A); Chn, Chain; (M), Model
++, pairs of aligned residues within a distance of 5 A
+Secondary structure: h, Helix; e, Strand; t, Turn
+
+
+                             Query_length-normalized_TM-score| RMSD|Reference_alignment_boundaries|
+                  Reference_length-normalized_TM-score|    Query_alignment_boundaries|
+   No.|                   Reference_description|        #Aligned_residues|             Reference_length|
+
+     1 ...b20_211110_pdb/1D8J_A.ent Chn:A (M:0) 0.5339 0.0612  3.52    70   343-511       1-81       81
+     2 ...b20_211110_pdb/3BV8_A.ent Chn:A (M:0) 0.5052 0.0632  3.66    73    25-471       5-83       84
+
+
+
+1.           
+>/home/mindaugas/projects/data/pdb20_211110/pdb20_211110_pdb/1D8J_A.ent Chn:A (M:0)
+  Length: Refn. = 81, Query = 1042
+
+ TM-score (Refn./Query) = 0.53386 / 0.06122, d0 (Refn./Query) = 3.21 / 10.71,  RMSD = 3.52 A
+ Identities = 5/180 (2%), Matched = 60/180 (33%), Gaps = 110/180 (61%)
+
+struct       hhhhhhhhhhhhhhhhhhh    hhhhhhhhhhhhhhhhhhhhhhht e   thhhhhhhhhhhhhhhhhhhhhhhhhhh
+Query:   343 VVQTLLEAVVLVVLVVILFLQTWRASIIPLIAVPVSVVGTFSILYLLGFSLNTLSLFGLVLAIGIVVDDAIVVVENVERN 422  
+             +  +                                                       ++ +G+++++++++V++++++
+Refn.:     1 A--L----------------------------------------------------S--GS-SGYKFGVLAKIVNYMKTR 23   
+struct                                                                  t    thhhhhhhhhhhhhhh
+
+struct       hht   thhhhhhhhhhhhh hhhhhhhhhhhhhhhhh   thhhhhhhhhhhhhhhhhhhhhhhhhh hhhh h  hhh
+Query:   423 IEEGLAPLAAAHQAMREVSG-PIIAIALVLCAVFVPMAFLSGVTGQFYKQFAVTIAISTVISAINSLT-LSPA-L--AAL 497  
+             +++G++  + ++  ++++   ++++I+                                +++++++ + ++++ +  +++
+Refn.:    24 HQRGDT--H-PLTLDEILDETQHLDIG--------------------------------LKQKQWL-MTEALVNNPKIEV 67   
+struct       hhht      ee thhhhhht                                      thhhhhh hhhhhh  th ee
+
+struct                 t   e thhh
+Query:   498 ------LLKPHGAKKDLPTR 511  
+                    ++      +   r
+Refn.:    68 IDGKYAFKP---K--Y-NVR 81   
+struct        ht eeee    t  h t  
+
+ Rotation [3,3] and translation [3,1] for query:
+    0.720787   0.100339  -0.685856         45.347839
+    0.675775   0.118467   0.727525         -2.546942
+    0.154251  -0.987875   0.017583         24.362478
+
+
+
+2.           
+>/home/mindaugas/projects/data/pdb20_211110/pdb20_211110_pdb/3BV8_A.ent Chn:A (M:0)
+  Length: Refn. = 84, Query = 1042
+
+ TM-score (Refn./Query) = 0.50520 / 0.06321, d0 (Refn./Query) = 3.29 / 10.71,  RMSD = 3.66 A
+ Identities = 8/453 (1%), Matched = 61/453 (13%), Gaps = 380/453 (83%)
+
+struct       hhh  hhh  ee         eeeeeeee    thhhhhhhhhhhhhh    t    eeeee tt  eeeeeee t   t
+Query:    25 GLI--AIPLLPVSEYPDVVPPSVQVRAEYPGANPKVIAETVATPLEEAINGVENMMYMKSVAGSDGVLVTTVTFRPGTDP 102  
+                   +   ++                                                                    
+Refn.:     5 E--EIIQYISDAK------------------------------------------------------------------- 15   
+struct       h  hhhhhhhhhh                                                                   
+
+struct       hhhhhhhhhhhhhhhh   thhhht eeeeeee  e     eeeeee t    thhhhhhhhhhhhhhhh  t e  eee
+Query:   103 DQAQVQVQNRVAQAEARLPEDVRRLGITTQKQSPTL---TLVVHLFSPNGKYDSLYMRNYATLKVKDELARLPGVGQIQI 179  
+                                                    +++V+L+     +   ++ +   +++  +++       + +
+Refn.:    16 ------------------------------------KFTPIKVYLN-----G---NF-EG--ITY--PES------FK-V 39   
+struct                                             eeeeeeee                 ee   t        e e
+
+struct       e  e    eeee  hhhhhh   thhhhhhhhhh  eeeeee       t e  eeeeeee  e  thhhh     e tt
+Query:   180 FGSGEYAMRVWLDPNKVAARGLTASDVVTAMQEQNVQVSAGQLGAEPLPQESDFLISINAQGRLHTEEEFGNIILKTAQD 259  
+             FGS+                                                                            
+Refn.:    40 FGSE---------------------------------------------------------------------------- 43   
+struct       e  t                                                                            
+
+struct         ee thht ee         eee ht  eeeeeeee t    hhhhhhhhhhhhhhhh   t   eeee  e  hhhhh
+Query:   260 GSLVRLRDVARIEMGSGSYALRSQLNNKDAVGIGIFQSPGANAIDLSNAVRAKMAELATRFPEDM-QWAAPYDPTVFVRD 338  
+                                          +++I++              ++++++++++++++ +  ++++ D+++++  
+Refn.:    44 ----------------------------QSKVIFC--------------EADDWKPFYEAYGSQFEDIEIE-DRRNSA-- 78   
+struct                                   t eeee                thhhhhhhhh  h    ee     hht   
+
+struct       hhhhhhhhhhhhhhhhhhhhhhh    hhhhhhhhhhhhhhhhhhhhhhht e   thhhhhhhhhhhhhhhhhhhhhhh
+Query:   339 SIRAVVQTLLEAVVLVVLVVILFLQTWRASIIPLIAVPVSVVGTFSILYLLGFSLNTLSLFGLVLAIGIVVDDAIVVVEN 418  
+                                                                    ++L                      
+Refn.:    79 -------------------------------------------------------IPL---------------------- 81   
+struct                                                              e                        
+
+struct       hhhhhht   thhhhhhhhhhhhhhhhhhhhhhhhhhhhhh   thhhhhhhh
+Query:   419 VERNIEEGLAPLAAAHQAMREVSGPIIAIALVLCAVFVPMAFLSGVTGQFYKQ 471  
+                                                              +   
+Refn.:    82 -------------------------------------------------K--D 83   
+struct                                                            
+
+ Rotation [3,3] and translation [3,1] for query:
+    0.128994  -0.577498  -0.806137         85.274391
+   -0.480028   0.674971  -0.560345         31.585426
+    0.867717   0.459250  -0.190148         15.689360
+
+
+
+Query length, 1042
+Total length of reference structures, 165
+Search space, 171930
+
