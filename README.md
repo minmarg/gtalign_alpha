@@ -54,7 +54,7 @@ superposition and search method.
 
 ## Installation
 
-  Download `bin/gtalign`.
+  Download the executable `bin/gtalign`.
 
 ## Getting started
 
@@ -72,7 +72,7 @@ superposition and search method.
 `bin/gtalign --qrs=str1.pdb.gz,str2.cif.gz --rfs=str3.cif.gz,str4.ent,my_ref_dir -s 0 -o mydir`
 
   Queries and references are processed in chunks.
-  The Maximum total length of queries in one chunk is controlled with the option 
+  The maximum total length of queries in one chunk is controlled with the option 
   `--dev-queries-total-length-per-chunk`. 
   The maximum length of a reference structure can be specified with the option 
   `--dev-max-length`.
