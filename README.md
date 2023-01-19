@@ -11,11 +11,81 @@ superposition and search method.
 
 ## Features
 
+  *  Graphics processing unit (GPU) version
+  *  Configurable GPU memory
+  *  Tested on NVIDIA Pascal (GeForce GTX 1080MQ), Volta (V100), and Ampere 
+  (A100) GPU architectures
+  *  Same executable for different architectures
+  *  ~1000x faster (Volta) than TM-align (tested with 186 queries and 18,861 database 
+  entries)
+  *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
+  residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
+  *  Running on Ampere is 2x faster than on Volta
+  *  Similar accuracy (optimality) to TM-align
+  *  Correct TM-scores are guaranteed for produced superpositions
+  *  Correct RMSDs are guaranteed for produced alignments
+  *  Support for PDB, PDBx/mmCIF, and gzip (thanks to [zlib](https://github.com/madler/zlib))
+  formats
+  *  Directories for search can be specified; subdirectories up to 3 levels deep are 
+  then searched
+
 ## Features to come
+
+  *  Further improvements in speed and accuracy (superposition optimality)
+  *  Fast prescreening for similarities in structure and sequence space, leading to a 
+  further 10-100-fold speedup for database searches
+  *  Reading multiple compressed structures from gzip archives 
+  *  Utilization of multiple GPUs
+  *  CPU version
+  *  Cross-platform support
+
+  The source code will be published later.
+
+## Available Platforms
+
+  The GTalign executable is provided for the following platform:
+
+  *  Linux x64
+
+## System requirements
+
+  *  CUDA-enabled GPU(s) with compute capability >=3.5 (released in 2012)
+  *  NVIDIA driver version >=418.87 and CUDA version >=10.1
+
+## Installation
+
+  Download `bin/gtalign`.
+
+## Getting started
+
+  Type `bin/gtalign` for a description of the options. 
+  Query structures and/or directories with queries are specified with the option `--qrs`.
+  Reference structures (to align queries with) and/or their directories to be 
+  searched are specified with the option `--rfs`.
+
+  Here are some examples:
+
+`bin/gtalign --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory`
+
+`bin/gtalign --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory`
+
+`bin/gtalign --qrs=str1.pdb.gz,str2.cif.gz --rfs=str3.cif.gz,str4.ent,my_ref_dir -s 0 -o mydir`
+
+  Queries and references are processed in chunks.
+  The Maximum total length of queries in one chunk is controlled with the option 
+  `--dev-queries-total-length-per-chunk`. 
+  The maximum length of a reference structure can be specified with the option 
+  `--dev-max-length`.
+  Larger structures will be skipped during a search.
+  A good practice is to keep `--dev-max-length` reasonably large (e.g., <10000; unless your 
+  set of references are all larger) so that many structure pairs are processed in parallel.
+
+  For comparing protein complexes, it usually suffices to set `--ter=0`.
 
 ## Contacts
 
-If you have questions, please contact Mindaugas Margelevicius at
+Bug reports, comments, suggestions are welcome.
+If you have other questions, please contact Mindaugas Margelevicius at
 [mindaugas.margelevicius@bti.vu.lt](mailto:mindaugas.margelevicius@bti.vu.lt).
 
 ## License
