@@ -1,3 +1,4 @@
+[![Release](https://img.shields.io/github/v/release/minmarg/gtalign_alpha)](https://github.com/minmarg/gtalign\_alpha/releases)
 ![Header image](imgs/gtalign_header.jpg)
 *3BV8\_A and 1D8J\_A (colored; left and right, respectively) superimposed on 
 7CZ9\_B (grey). Green, GTalign superposition; red, TM-align superposition. 
