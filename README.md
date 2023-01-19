@@ -16,7 +16,8 @@ superposition and search method.
   *  Tested on NVIDIA Pascal (GeForce GTX 1080MQ), Volta (V100), and Ampere 
   (A100) GPU architectures
   *  Same executable for different architectures
-  *  ~1000x faster (Volta) than TM-align (tested with 186 queries and 18,861 database 
+  *  ~1000x faster on a single GPU (Volta) than TM-align (tested with 186 queries and 
+  18,861 database 
   entries)
   *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
   residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
