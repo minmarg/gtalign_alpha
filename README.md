@@ -84,6 +84,21 @@ superposition and search method.
 
   For comparing protein complexes, it usually suffices to set `--ter=0`.
 
+## Citation
+
+If you use this software, please cite:
+
+```bibtex
+@software{Margelevicius_GTalign_alpha_2023,
+  author = {Margelevicius, Mindaugas},
+  month = {1},
+  title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
+  url = {https://github.com/minmarg/gtalign_alpha},
+  version = {0.1.0},
+  year = {2023}
+}
+```
+
 ## Contacts
 
 Bug reports, comments, suggestions are welcome.
