@@ -23,20 +23,20 @@ superposition and search method.
   *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
   residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
-  *  Similar accuracy (optimality) to TM-align
+  *  Similar and even better accuracy (optimality) compared with TM-align
   *  Correct TM-scores are guaranteed for produced superpositions
   *  Correct RMSDs are guaranteed for produced alignments
+  *  Many options for speed-accuracy tradeoff
   *  Support for PDB, PDBx/mmCIF, and gzip (thanks to [zlib](https://github.com/madler/zlib))
   formats
-  *  Directories for search can be specified; subdirectories up to 3 levels deep are 
-  then searched
+  *  Reading (un)compressed structures from tar archives 
+  *  Directories for search up to 3 levels deep can be specified
 
 ## Features to come
 
   *  Further improvements in speed and accuracy (superposition optimality)
   *  Fast prescreening for similarities in structure and sequence space, leading to a 
   further 10-100-fold speedup for database searches
-  *  Reading multiple compressed structures from gzip archives 
   *  Utilization of multiple GPUs
   *  CPU version
   *  Cross-platform support
@@ -67,11 +67,11 @@ superposition and search method.
 
   Here are some examples:
 
-`bin/gtalign --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory`
+`bin/gtalign -v --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory`
 
-`bin/gtalign --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory`
+`bin/gtalign -v --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory`
 
-`bin/gtalign --qrs=str1.pdb.gz,str2.cif.gz --rfs=str3.cif.gz,str4.ent,my_ref_dir -s 0 -o mydir`
+`bin/gtalign -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=str3.cif.gz,str4.ent,my_ref_dir -s 0 -o mydir`
 
   Queries and references are processed in chunks.
   The maximum total length of queries in one chunk is controlled with the option 
@@ -94,7 +94,7 @@ If you use this software, please cite:
   month = {1},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.1.0},
+  version = {0.2.0},
   year = {2023}
 }
 ```
@@ -120,4 +120,8 @@ License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF 
 either express or implied. 
 See the License for the specific language governing permissions and limitations under the 
 License.
+
+## Funding
+
+This project has received funding from the Research Council of Lithuania (LMTLT).
 

@@ -1,0 +1,5 @@
+0.01, January 2023  *  Alpha pre-release
+0.02, March 2023  *  New options and functionalities introduced: 
+--pre-score, --depth, --trigger, --no-detailed-search, --convergence;
+Memory footprint reduced; Multi-threaded reading and reading from tar 
+archives implemented; small bug fixes
