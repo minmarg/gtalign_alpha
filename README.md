@@ -32,7 +32,7 @@ superposition and search method.
   *  Reading (un)compressed structures from tar archives 
   *  Directories for search up to 3 levels deep can be specified
 
-## Features to come
+## Future features
 
   *  Further improvements in speed and accuracy (superposition optimality)
   *  Fast prescreening for similarities in structure and sequence space, leading to a 
