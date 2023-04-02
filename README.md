@@ -126,5 +126,5 @@ License.
 
 ## Funding
 
-This project has received funding from the Research Council of Lithuania (LMTLT).
+This project has received funding from the Research Council of Lithuania (LMTLT; Grant No. S-MIP-23-104).
 
