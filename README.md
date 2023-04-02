@@ -24,7 +24,8 @@ superposition and search method.
   *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
   residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
-  *  More sensitive and better accuracy (optimality) compared to TM-align when using deep superposition search
+  *  More sensitive and better accuracy (optimality; on average) compared to TM-align 
+  when using deep superposition search
   *  Correct TM-scores are guaranteed for produced superpositions
   *  Correct RMSDs are guaranteed for produced alignments
   *  Many options for speed-accuracy tradeoff
