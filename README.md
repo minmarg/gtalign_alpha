@@ -14,16 +14,17 @@ superposition and search method.
 
   *  Graphics processing unit (GPU) version
   *  Configurable GPU memory
+  *  Utilization of multiple GPUs
   *  Tested on NVIDIA Pascal (GeForce GTX 1080MQ), Turing (GeForce RTX 2080Ti), 
   Volta (V100), and Ampere (A100) GPU architectures
   *  Same executable for different architectures
   *  ~1000x faster on a single GPU (Volta) than TM-align (tested with 186 queries and 
-  18,861 database 
-  entries)
+  18,861 database entries)
+  *  Fast prescreening for similarities in structure space (further n-fold speedup for database searches)
   *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
   residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
-  *  Similar and even better accuracy (optimality) compared with TM-align
+  *  More sensitive and better accuracy (optimality) compared to TM-align when using deep superposition search
   *  Correct TM-scores are guaranteed for produced superpositions
   *  Correct RMSDs are guaranteed for produced alignments
   *  Many options for speed-accuracy tradeoff
@@ -37,7 +38,6 @@ superposition and search method.
   *  Further improvements in speed and accuracy (superposition optimality)
   *  Fast prescreening for similarities in structure and sequence space, leading to a 
   further 10-100-fold speedup for database searches
-  *  Utilization of multiple GPUs
   *  CPU version
   *  Cross-platform support
 
@@ -56,11 +56,15 @@ superposition and search method.
 
 ## Installation
 
-  Download the executable `bin/gtalign`.
+  Download the executable `bin/gtalign` (change permissions once downloaded: 
+  `chmod ug+x bin/gtalign`) OR clone the repository: 
+
+  `git clone https://github.com/minmarg/gtalign_alpha.git`
 
 ## Getting started
 
-  Type `bin/gtalign` for a description of the options. 
+  Type `bin/gtalign` for a description of the [options](out/gtalign_options.md). 
+
   Query structures and/or directories with queries are specified with the option `--qrs`.
   Reference structures (to align queries with) and/or their directories to be 
   searched are specified with the option `--rfs`.
@@ -91,10 +95,9 @@ If you use this software, please cite:
 ```bibtex
 @software{Margelevicius_GTalign_alpha_2023,
   author = {Margelevicius, Mindaugas},
-  month = {1},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.2.0},
+  version = {0.3.0},
   year = {2023}
 }
 ```

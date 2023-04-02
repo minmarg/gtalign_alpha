@@ -1,5 +1,19 @@
-0.01, January 2023  *  Alpha pre-release
-0.02, March 2023  *  New options and functionalities introduced: 
---pre-score, --depth, --trigger, --no-detailed-search, --convergence;
-Memory footprint reduced; Multi-threaded reading and reading from tar 
-archives implemented; small bug fixes
+0.03, March 2023
+
+* Output options added: wrap alignments (--wrap), remove deletion positions from alignments (--no-deletions), transformation matrices for reference structures (--referenced)
+* Superposition optimality improved for --depth={deep,high}
+* Number of independent superposition branches for exploration made configurable (--nbranches)
+* Similarity pre-screening in structure space optimized
+* Utilization of multiple GPUs
+
+0.02, March 2023
+
+* New options and functionalities introduced: --pre-score, --depth, --trigger, --no-detailed-search, --convergence
+* Memory footprint reduced
+* Multi-threaded reading and reading from tar archives implemented
+* small bug fixes
+
+0.01, January 2023
+
+* Alpha pre-release
+
