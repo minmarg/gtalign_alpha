@@ -89,6 +89,12 @@ superposition and search method.
 
   For comparing protein complexes, it usually suffices to set `--ter=0`.
 
+## Several examples
+
+![Examples](imgs/gtalign_examples_m.jpg)
+*Note: Superpositions for DALI were produced from DALI alignments using TM-align. 
+Relatively high RMSD values indicate inaccurately aligned fragments.*
+
 ## Citation
 
 If you use this software, please cite:
