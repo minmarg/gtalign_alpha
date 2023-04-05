@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.03.00
+gtalign 0.04.00
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University

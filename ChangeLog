@@ -1,3 +1,7 @@
+0.04, April 2023
+
+* Non-critical bug fix: missed synchronization
+
 0.03, March 2023
 
 * Output options added: wrap alignments (--wrap), remove deletion positions from alignments (--no-deletions), transformation matrices for reference structures (--referenced)
