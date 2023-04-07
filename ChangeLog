@@ -1,6 +1,7 @@
 0.04, April 2023
 
 * Non-critical bug fix: missed synchronization
+* Race condition fixed when using --pre-score
 
 0.03, March 2023
 
