@@ -1,3 +1,7 @@
+0.05, April 2023
+
+* Option for minimum reference length introduced: --dev-min-length
+
 0.04, April 2023
 
 * Non-critical bug fix: missed synchronization

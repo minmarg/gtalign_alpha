@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.04.00
+gtalign 0.05.00
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -109,8 +109,9 @@ Per-pair computation options:
                         Default=18
 --speed=<code>              Speed up the GTalign alignment algorithm at the
                             expense of optimality (larger values => faster;
-                            NOTE: the pre-screening options are not affected):
-                             0: --depth=0 --trigger=0 --nbranches=7
+                            NOTE: the pre-screening options are not affected;
+                            NOTE: settings override specified options):
+                             0: --depth=0 --trigger=0 --nbranches=16
                              1: --depth=0 --trigger=0
                              2: --depth=0 --trigger=20
                              3: --depth=0 --trigger=50
@@ -132,6 +133,11 @@ HPC options:
                             reference data. NOTE that computation on GPU can
                             be faster than reading data by 1 CPU thread.
                         Default=10
+--cpu-threads=<count>       Number of CPU threads [1,1024] for parallel
+                            computation when compiled without support for
+                            GPUs.
+                            NOTE: Default number is shown using --dev-list.
+                        Default=[MAX(1, #cpu_cores - <cpu-threads-reading>)]
 --dev-queries-per-chunk=<count>
                             Maximum number [1,100] of queries processed
                             as one chunk in parallel. Large values can lead
@@ -154,8 +160,12 @@ HPC options:
                             NOTE: Large values greatly reduce #structure pairs
                             processed in parallel.
                         Default=4000
+--dev-min-length=<length>   Minimum length [3,32767] for reference structures.
+                            References shorter than this specified value will
+                            be skipped.
+                        Default=20
 
-GPU options:
+Device options:
 --dev-N=(<number>|,<id_list>)
                             Maximum number of GPUs to use. This can be
                             specified by a number or given by a comma-separated
@@ -164,17 +174,20 @@ GPU options:
                             the specified order. Otherwise, more powerful GPUs
                             are selected first.
                             NOTE: The first symbol preceding a list is a comma.
+                            NOTE: The option has no effect for the version
+                            compiled without support for GPUs.
                         Default=1 (most powerful GPU)
 --dev-mem=<megabytes>       Maximum amount of GPU memory (MB) that can be used.
                             All memory is used if a GPU has less than the
                             specified amount of memory.
-                        Default=[all memory of GPU(s)]
+                        Default=[all memory of GPU(s)] (with support for GPUs)
+                        Default=16384 (without support for GPUs)
 --dev-expected-length=<length>
                             Expected length of database proteins. Its values
                             are restricted to the interval [20,200].
-                            NOTE: Increasing it reduces GPU memory
-                            requirements, but mispredictions may cost
-                            additional computation time.
+                            NOTE: Increasing it reduces memory requirements,
+                            but mispredictions may cost additional computation
+                            time.
                         Default=50
 --io-nbuffers=<count>       Number of buffers [2,6] used to cache data read
                             from file. Values greater than 1 lead to increased
@@ -190,7 +203,8 @@ GPU options:
 
 Other options:
 --dev-list                  List all GPUs compatible and available on the
-                            system and exit.
+                            system, print a default number for option
+                            --cpu-threads (for the CPU version), and exit.
 -v [<level_number>]         Verbose mode.
 -h                          This text.
 

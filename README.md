@@ -31,7 +31,7 @@ superposition and search method.
   *  Many options for speed-accuracy tradeoff
   *  Support for PDB, PDBx/mmCIF, and gzip (thanks to [zlib](https://github.com/madler/zlib))
   formats
-  *  Reading (un)compressed structures from tar archives 
+  *  Reading (un)compressed structures from TAR archives 
   *  Directories for search up to 3 levels deep can be specified
 
 ## Future features
@@ -104,7 +104,7 @@ If you use this software, please cite:
   author = {Margelevicius, Mindaugas},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.3.0},
+  version = {0.5.0},
   year = {2023}
 }
 ```
