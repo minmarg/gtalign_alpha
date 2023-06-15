@@ -17,7 +17,7 @@ superposition and search method.
   *  Configurable GPU memory
   *  Utilization of multiple GPUs
   *  Tested on NVIDIA Pascal (GeForce GTX 1080MQ), Turing (GeForce RTX 2080Ti, GTX 1650), 
-  Volta (V100), Ampere (A100) GPU, and Ada Lovelace (GeForce RTX 4090) architectures
+  Volta (V100), Ampere (A100), and Ada Lovelace (GeForce RTX 4090) GPU architectures
   *  Same executable for different architectures
   *  ~1000x faster on a single GPU (Volta) than TM-align (tested with 186 queries and 
   18,861 database entries)
