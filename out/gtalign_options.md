@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.05.00
+gtalign 0.06.00 (compiled with GPU support)                                                                                                                                 
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -210,6 +210,7 @@ Other options:
 
 
 Examples:
+gtalign -v --qrs=str1.cif.gz --rfs=my_huge_structure_database.tar -o my_output_directory
 gtalign -v --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory
 gtalign -v --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory
 gtalign -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=archive.tar,my_ref_dir -s 0 -o mydir
