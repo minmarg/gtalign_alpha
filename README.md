@@ -85,7 +85,7 @@ superposition and search method.
 ## Installation
 
   Download the executable `bin/gtalign` (or `bin/gtalign_mp` for CPU/multiprocessing 
-  version) and change permissions once downloaded: `chmod ug+x bin/gtalign`)
+  version) and change permissions once downloaded: `chmod ug+x bin/gtalign`.
 
   Alternatively, clone the repository: 
 
