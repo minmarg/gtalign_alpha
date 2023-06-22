@@ -52,8 +52,9 @@ superposition and search method.
   using the setting for the fastest search (`--speed=13`).
 
   The estimate is made for uncompressed structures or when using 48-64 CPU 
-  threads for reading and decompressing. Decompression by 32 CPU threads is 
-  ~3x slower than massive structure comparison on GeForce RTX 4090.
+  threads for reading and decompressing (option `--cpu-threads-reading`).
+  Decompression by 32 CPU threads is ~3x slower than the massive structure 
+  comparison on GeForce RTX 4090.
 
 ## A note on the CPU/multiprocessing version
 
