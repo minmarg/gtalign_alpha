@@ -21,7 +21,7 @@ superposition and search method.
   *  Same executable for different architectures
   *  ~1000x faster on a single GPU (Volta) than TM-align (tested with 186 queries and 
   18,861 database entries)
-  *  Fast prescreening for similarities in both *sequence* and *structure* space (further n-fold speedup for database searches)
+  *  Fast prescreening for similarities in both **sequence** and **structure** space (further n-fold speedup for database searches)
   *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
   residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
