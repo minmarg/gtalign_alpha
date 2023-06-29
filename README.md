@@ -21,7 +21,7 @@ superposition and search method.
   *  Same executable for different architectures
   *  ~1000x faster on a single GPU (Volta) than TM-align (tested with 186 queries and 
   18,861 database entries)
-  *  Fast prescreening for similarities in structure space (further n-fold speedup for database searches)
+  *  Fast prescreening for similarities in both *sequence* and *structure* space (further n-fold speedup for database searches)
   *  Alignment of complexes up to 65,535 residues long; the alignment of 37,860 
   residue-long complexes (7A4I and 7A4J) is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
@@ -39,8 +39,6 @@ superposition and search method.
 ## Future features
 
   *  Further improvements in speed and accuracy (superposition optimality)
-  *  Fast prescreening for similarities in structure and sequence space, leading to a 
-  further n-fold speedup for database searches
   *  Cross-platform support
 
   The source code will be published later.
@@ -141,7 +139,7 @@ If you use this software, please cite:
   author = {Margelevicius, Mindaugas},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.6.0},
+  version = {0.7.0},
   year = {2023}
 }
 ```

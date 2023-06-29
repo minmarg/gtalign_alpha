@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.06.00 (compiled with GPU support)                                                                                                                                 
+gtalign 0.07.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -78,11 +78,17 @@ Interpretation options:
                         Default=0
 
 Similarity pre-screening options:
+--pre-similarity=<similarity_threshold>
+                            Minimum pairwise sequence similarity score [0,)
+                            for conducting structure comparison. Values >=10
+                            start taking considerable effect on speed.
+                            0, all pairs are subject to further processing.
+                        Default=0.0
 --pre-score=<TMscore_threshold>
                             Minimum provisional TM-score [0,1) for structure
                             pairs to proceed to further stages.
                             0, all pairs are subject to further processing.
-                        Default=0.2
+                        Default=0.3
 
 Per-pair computation options:
 --symmetric                 Always produce symmetric alignments for the same
@@ -102,6 +108,9 @@ Per-pair computation options:
                             branches identified during superposition search to
                             explore in more detail.
                         Default=5
+--add-search-by-ss          Include superposition search by a combination of
+                            secondary structure and sequence similarity, which
+                            helps optimization for some pairs.
 --no-detailed-search        Skip detailed (most computationally demanding)
                             superposition search. Options --depth, --trigger,
                             and --nbranches then have no effect.
@@ -111,7 +120,7 @@ Per-pair computation options:
                             expense of optimality (larger values => faster;
                             NOTE: the pre-screening options are not affected;
                             NOTE: settings override specified options):
-                             0: --depth=0 --trigger=0 --nbranches=16
+                             0: --depth=0 --trigger=0 --nbranches=16 --add-search-by-ss
                              1: --depth=0 --trigger=0
                              2: --depth=0 --trigger=20
                              3: --depth=0 --trigger=50
