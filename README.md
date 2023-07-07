@@ -139,7 +139,7 @@ If you use this software, please cite:
   author = {Margelevicius, Mindaugas},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.7.0},
+  version = {0.8.0},
   year = {2023}
 }
 ```
