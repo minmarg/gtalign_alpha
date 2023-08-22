@@ -8,7 +8,8 @@ The GTalign output file for this example is available
 # GTalign (alpha release)
 
 GTalign, a novel high-performance computing (HPC) protein structure alignment, 
-superposition and search method.
+superposition and search method. ($\mathbb{\color{red}{NEW:}}$) Flexible structure 
+clustering ability.
 
 ## Features
 
@@ -35,6 +36,7 @@ superposition and search method.
   formats
   *  Reading (un)compressed structures from TAR archives 
   *  Directories for search up to 3 levels deep can be specified
+  *  Flexible structure clustering ability (GPU only)
 
 ## Future features
 
@@ -105,7 +107,7 @@ superposition and search method.
 
   Here are some examples:
 
-`gtalign -v --qrs=str1.cif.gz --rfs=my_huge_structure_database.tar -o my_output_directory`
+`bin/gtalign -v --qrs=str1.cif.gz --rfs=my_huge_structure_database.tar -o my_output_directory`
 
 `bin/gtalign -v --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory`
 
@@ -124,7 +126,14 @@ superposition and search method.
 
   For comparing protein complexes, it usually suffices to set `--ter=0`.
 
-## Several examples
+## Clustering
+
+  The GPU version of GTalign allows for clustering of large protein structure datasets.
+  This option is as highly configurable as the search. A simple example is:
+
+`bin/gtalign -v --cls=my_huge_structure_database.tar -o my_output_directory`
+
+## Structural examples
 
 ![Examples](imgs/gtalign_examples_m.jpg)
 *Note: Superpositions for DALI were produced from DALI alignments using TM-align. 
@@ -139,7 +148,7 @@ If you use this software, please cite:
   author = {Margelevicius, Mindaugas},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.8.0},
+  version = {0.9.0},
   year = {2023}
 }
 ```

@@ -1,3 +1,7 @@
+0.09, August 2023
+
+* Flexible clustering of structures implemented
+
 0.08, July 2023
 
 * Bug fix: coherency issue when using multiple GPUs and filters

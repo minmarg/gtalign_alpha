@@ -1,13 +1,14 @@
 ```
 
-gtalign 0.08.00 (compiled with GPU support)
+gtalign 0.09.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
 
 
-Usage:
+Usage (one of the two):
 gtalign --qrs=(<structs>|<dirs>|<archs>) --rfs=(<structs>|<dirs>|<archs>) -o <out_dir> [<options>]
+gtalign --cls=(<structs>|<dirs>|<archs>) -o <out_dir> [<options>]   *GPU version*
 
 Basic options:
 --qrs=(<structs>,<dirs>,<archs>)
@@ -26,11 +27,29 @@ Basic options:
                             searched.
 --sfx=<file_extension_list> Comma-separated list of extensions of structures
                             to be searched for in the directories/archives
-                            specified by --qrs and --rfs.
+                            specified by --qrs and --rfs (or --cls).
                             By default, all extensions are valid.
--o <output_directory>       Directory of output files for each query.
+-o <output_directory>       Directory of output files for each query or
+                            cluster.
 
-Output control options:
+Clustering options:
+--cls=(<structs>,<dirs>,<archs>)
+                            Comma-separated list of structure files (PDB,
+                            PDBx/mmCIF, and gzip), tar archives (of files
+                            gzipped and not) and directories (see --qrs) of
+                            structures to be clustered.
+                            NOTE: The clustering criterion defined by --sort.
+                            RECOMMENDED: --speed=13 for large datasets.
+--cls-threshold=<threshold> TM-score (equal or greater) or RMSD (equal or
+                            less) threshold for a pair to be considered
+                            part of the same cluster.
+                        Default=0.5
+--cls-coverage=<fraction>   Length coverage threshold (0,1].
+                        Default=0.7
+--cls-one-sided-coverage    Apply coverage threshold to one pair member.
+--cls-out-sequences         Output each cluster's sequences in FASTA format.
+
+Output control options (for search usage except --sort):
 -s <TMscore_threshold>      Report results down to this TM-score limit [0,1).
                             0 implies all results are valid for report.
                             NOTE: Also check the pre-screening options below.
@@ -223,5 +242,6 @@ gtalign -v --qrs=str1.cif.gz --rfs=my_huge_structure_database.tar -o my_output_d
 gtalign -v --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory
 gtalign -v --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory
 gtalign -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=archive.tar,my_ref_dir -s 0 -o mydir
+gtalign -v --cls=my_huge_structure_database.tar -o my_output_directory
 
 ```
