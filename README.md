@@ -8,7 +8,7 @@ The GTalign output file for this example is available
 # GTalign (alpha release)
 
 GTalign, a novel high-performance computing (HPC) protein structure alignment, 
-superposition and search method. ($\mathbb{\color{red}{NEW:}}$) Flexible structure 
+superposition and search method. ($\mathbb{\color{red}{NEW!}}$) Flexible structure 
 clustering ability.
 
 ## Features
