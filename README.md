@@ -9,7 +9,7 @@ The GTalign output file for this example is available
 
 GTalign, a novel high-performance computing (HPC) protein structure alignment, 
 superposition and search method. ($\mathbb{\color{red}{NEW!}}$) Flexible structure 
-clustering ability.
+clustering.
 
 ## Features
 
@@ -36,12 +36,9 @@ clustering ability.
   formats
   *  Reading (un)compressed structures from TAR archives 
   *  Directories for search up to 3 levels deep can be specified
-  *  Flexible structure clustering ability (GPU only)
-
-## Future features
-
-  *  Further improvements in speed and accuracy (superposition optimality)
-  *  Cross-platform support
+  *  Flexible structure **clustering** ability (GPU only)
+  *  Cross-platform/portable code
+  *  Opportunities for improvements in speed and accuracy (superposition optimality)
 
   The source code will be published later.
 
@@ -73,15 +70,16 @@ clustering ability.
   The GTalign executable is provided for the following platform:
 
   *  Linux x64
+  *  Windows 10/11 x64
 
 ## System requirements (GPU version)
 
   *  CUDA-enabled GPU(s) with compute capability >=3.5 (released in 2012)
-  *  NVIDIA driver version >=418.87 and CUDA version >=10.1
+  *  NVIDIA driver version >=418.87 (>=425.25 for Win64) and CUDA version >=10.1
 
 ## System requirements (CPU/multiprocessing version)
 
-  *  GLIBC version >=2.16
+  *  GLIBC version >=2.16 (Linux)
 
 ## Installation
 
@@ -91,6 +89,8 @@ clustering ability.
   Alternatively, clone the repository: 
 
   `git clone https://github.com/minmarg/gtalign_alpha.git`
+
+  For MS Windows, run the installer located in the `MS_Windows_installer` directory.
 
 ## Getting started
 
@@ -129,9 +129,15 @@ clustering ability.
 ## Clustering
 
   The GPU version of GTalign allows for clustering of large protein structure datasets.
-  This option is as highly configurable as the search. A simple example is:
+  This option is as highly configurable as the search. A simplest command line example is:
 
 `bin/gtalign -v --cls=my_huge_structure_database.tar -o my_output_directory`
+
+  which instructs GTalign to cluster structures archived in `my_huge_structure_database.tar`
+  with default parameters.
+  The clustering options, which can be used in combination with other options to make
+  clustering flexible, can be found in the complete list of [options](out/gtalign_options.md).
+
 
 ## Structural examples
 
@@ -148,7 +154,7 @@ If you use this software, please cite:
   author = {Margelevicius, Mindaugas},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.9.0},
+  version = {0.10.0},
   year = {2023}
 }
 ```

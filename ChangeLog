@@ -1,3 +1,9 @@
+0.10, August 2023
+
+* Cross-platform code
+* Non-essential issue fixes (Clustering sync; Model number parsing; Adjustment for Clang)
+* Option --no-file-sort
+
 0.09, August 2023
 
 * Flexible clustering of structures implemented

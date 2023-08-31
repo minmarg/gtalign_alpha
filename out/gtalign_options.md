@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.09.00 (compiled with GPU support)
+gtalign 0.10.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -192,6 +192,9 @@ HPC options:
                             References shorter than this specified value will
                             be skipped.
                         Default=20
+--no-file-sort              Do not sort files by size. Data locality can be
+                            beneficial when reading files lasts longer than
+                            computation.
 
 Device options:
 --dev-N=(<number>|,<id_list>)
