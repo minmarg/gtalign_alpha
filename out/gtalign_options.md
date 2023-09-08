@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.10.00 (compiled with GPU support)
+gtalign 0.11.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search method.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -48,6 +48,9 @@ Clustering options:
                         Default=0.7
 --cls-one-sided-coverage    Apply coverage threshold to one pair member.
 --cls-out-sequences         Output each cluster's sequences in FASTA format.
+--cls-algorithm=<code>      0: Complete-linkage clustering;
+                            1: Single-linkage clustering.
+                        Default=0
 
 Output control options (for search usage except --sort):
 -s <TMscore_threshold>      Report results down to this TM-score limit [0,1).

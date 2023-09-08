@@ -9,7 +9,7 @@ The GTalign output file for this example is available
 
 GTalign, a novel high-performance computing (HPC) protein structure alignment, 
 superposition and search method. ($\mathbb{\color{red}{NEW!}}$) Flexible structure 
-clustering.
+clustering ability.
 
 ## Features
 
@@ -67,7 +67,7 @@ clustering.
 
 ## Available Platforms
 
-  The GTalign executable is provided for the following platform:
+  The GTalign executable is provided for the following platforms:
 
   *  Linux x64
   *  Windows 10/11 x64
@@ -128,13 +128,19 @@ clustering.
 
 ## Clustering
 
-  The GPU version of GTalign allows for clustering of large protein structure datasets.
+  The GPU version of GTalign allows for clustering (by complete or single linkage) of large 
+  protein structure datasets.
   This option is as highly configurable as the search. A simplest command line example is:
 
 `bin/gtalign -v --cls=my_huge_structure_database.tar -o my_output_directory`
 
   which instructs GTalign to cluster structures archived in `my_huge_structure_database.tar`
   with default parameters.
+  The superimposed members of a cluster can then be obtained by running `gtalign` with 
+  the first member as query and all others as references and using options 
+  `--pre-score=0 -s 0 --referenced`, which produces transformation matrices for the reference 
+  structures to be superimposed on the query.
+
   The clustering options, which can be used in combination with other options to make
   clustering flexible, can be found in the complete list of [options](out/gtalign_options.md).
 
@@ -154,7 +160,7 @@ If you use this software, please cite:
   author = {Margelevicius, Mindaugas},
   title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
   url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.10.0},
+  version = {0.11.0},
   year = {2023}
 }
 ```
