@@ -1,3 +1,7 @@
+0.13, October 2023
+
+* Data caching when reading large datasets implemented (option -c)
+
 0.12, September 2023
 
 * Bug fix for reading PDB files: Case of ENDMDL immediately following TER

@@ -1,8 +1,8 @@
 ```
 
-gtalign 0.12.00 (compiled with GPU support)
+gtalign 0.13.00 (compiled with GPU support)
 
-GTalign, HPC protein structure alignment, superposition and search method.
+GTalign, HPC protein structure alignment, superposition and search tool.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
 
 
@@ -22,15 +22,19 @@ Basic options:
                             Comma-separated list of structure files (PDB,
                             PDBx/mmCIF, and gzip), tar archives and/or
                             directories of reference structures (to align
-                            queries with). If a directory is specified,
-                            subdirectories up to 3 levels deep will be
-                            searched.
+                            queries with). For directories, subdirectories
+                            up to 3 levels deep will be searched.
+                            RECOMMENDED: -c <dir> when --speed > 9.
 --sfx=<file_extension_list> Comma-separated list of extensions of structures
                             to be searched for in the directories/archives
                             specified by --qrs and --rfs (or --cls).
                             By default, all extensions are valid.
 -o <output_directory>       Directory of output files for each query or
                             cluster.
+-c <cache_directory>        Directory for cached data, which can provide a
+                            considerable speedup for multiple queries or
+                            clustering and can be reused later (for same
+                            --rfs or --cls). By default, not used.
 
 Clustering options:
 --cls=(<structs>,<dirs>,<archs>)
@@ -40,6 +44,7 @@ Clustering options:
                             structures to be clustered.
                             NOTE: The clustering criterion defined by --sort.
                             RECOMMENDED: --speed=13 for large datasets.
+                            RECOMMENDED: -c <dir> when --speed > 9.
 --cls-threshold=<threshold> TM-score (equal or greater) or RMSD (equal or
                             less) threshold for a pair to be considered
                             part of the same cluster.
