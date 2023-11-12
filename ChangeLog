@@ -1,3 +1,7 @@
+0.14, November 2023
+
+* Bug fix: Score reinitialization was missing; occasionally actual for deep searches (--speed<7)
+
 0.13, October 2023
 
 * Data caching when reading large datasets implemented (option -c)
