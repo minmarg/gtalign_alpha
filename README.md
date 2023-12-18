@@ -1,5 +1,5 @@
 [![Release](https://img.shields.io/github/v/release/minmarg/gtalign_alpha)](https://github.com/minmarg/gtalign_alpha/releases)
-![Header image](imgs/gtalign_header.jpg)
+![Header image](imgs/gtalign_header.jpg){:width="600px"}
 
 # GTalign (alpha release)
 
@@ -15,7 +15,7 @@ superposition and search method (with flexible structure clustering ability)
   *  Tested on NVIDIA Pascal (GeForce GTX 1080MQ), Turing (GeForce RTX 2080Ti, GTX 1650), 
   Volta (V100), Ampere (A100), and Ada Lovelace (GeForce RTX 4090) GPU architectures
   *  Same executable for different architectures
-  *  >1000x faster on a single GPU (Volta) than TM-align
+  *  `>`1000x faster on a single GPU (Volta) than TM-align
   *  Fast prescreening for similarities in both **sequence** and **structure** space (further n-fold speedup for database searches)
   *  Alignment of complexes up to 65,535 residues long; 7a4i and 7a4j (37,860 residues each) complexes alignment is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
