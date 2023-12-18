@@ -1,3 +1,7 @@
+-.--, December 2023
+
+* Publication of the full software package, including source code
+
 0.14, November 2023
 
 * Bug fix: Score reinitialization was missing; occasionally actual for deep searches (--speed<7)
