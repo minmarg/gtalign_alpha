@@ -1,5 +1,5 @@
 [![Release](https://img.shields.io/github/v/release/minmarg/gtalign_alpha)](https://github.com/minmarg/gtalign_alpha/releases)
-![Header image](imgs/gtalign_header.jpg){:width="600px"}
+![Header image](imgs/gtalign_header.jpg)
 
 # GTalign (alpha release)
 
