@@ -14,7 +14,7 @@ if [ ! -d build_mp_clang ]; then mkdir build_mp_clang || exit 1; fi
 cd build_mp_clang || exit 1
 
 
-CC=clang-10 CXX=clang++-10 \
+CC=clang CXX=clang++ \
 cmake -DGPUINUSE=0 -DFASTMATH=1 -DCMAKE_INSTALL_PREFIX=${MYHOME} \
     ../src/  ||  (cd ..; exit 1)
 
