@@ -64,7 +64,7 @@ superposition and search method (with flexible structure clustering ability)
 
   *  GLIBC version >=2.16 (Linux)
 
-# Installation of pre-compiled binaries
+## Installation of pre-compiled binaries
 
   Download or clone the repository:
 
@@ -82,11 +82,11 @@ superposition and search method (with flexible structure clustering ability)
 
   `MS_Windows10_installer_GPU/GTalign-win64-installer.msi`
 
-# Installation from source code
+## Installation from source code
 
-## Installation on Linux and macOS
+### Installation on Linux and macOS
 
-### Software requirements
+#### Software requirements
 
   To build and install the GTalign software from the source code
   on Linux or macOS (CPU version), these tools are required to be installed:
@@ -101,7 +101,7 @@ superposition and search method (with flexible structure clustering ability)
   *  [the NVIDIA CUDA toolkit](https://developer.nvidia.com/cuda-downloads) version 10.0 or greater
      (required for GPU version only)
 
-### Installation
+#### Installation
 
   Run the shell script for the GPU (Linux) and CPU versions, respectively, 
   using GCC or LLVM/Clang compilers:
@@ -114,9 +114,9 @@ superposition and search method (with flexible structure clustering ability)
 
   `BUILD_and_INSTALL__mp__unix__clang.sh`
 
-## Installation on MS Windows
+### Installation on MS Windows
 
-### Software requirements
+#### Software requirements
 
    To build and install the GTalign software from the source code
    on MS Windows, these tools are required to be installed:
@@ -129,7 +129,7 @@ superposition and search method (with flexible structure clustering ability)
   *  [the NVIDIA CUDA toolkit](https://developer.nvidia.com/cuda-downloads) version 10.0 or greater 
      (free software) (required for GPU version only)
 
-### Installation
+#### Installation
 
   Run the command (batch) file for the GPU and CPU versions, respectively:
 
@@ -192,15 +192,23 @@ superposition and search method (with flexible structure clustering ability)
 
 ## Citation
 
-If you use this software, please cite (manuscript on bioRxiv will be available soon):
+If you use the GTalign software or data, please cite:
+
+Margelevicius, M. GTalign: High-performance protein structure alignment, 
+superposition, and search. bioRxiv 2023.12.18.572167; (2023). 
+doi: https://doi.org/10.1101/2023.12.18.572167
 
 ```bibtex
-@software{Margelevicius_GTalign_alpha_2023,
-  author = {Margelevicius, Mindaugas},
-  title = {{GTalign, HPC protein structure alignment, superposition and search (alpha release)}},
-  url = {https://github.com/minmarg/gtalign_alpha},
-  version = {0.14.0},
-  year = {2023}
+@article{Margelevicius2023.12.18.572167,
+  author = {Mindaugas Margelevicius},
+  title = {GTalign: High-performance protein structure alignment, superposition, and search},
+  elocation-id = {2023.12.18.572167},
+  year = {2023},
+  doi = {10.1101/2023.12.18.572167},
+  publisher = {Cold Spring Harbor Laboratory},
+  URL = {https://www.biorxiv.org/content/early/2023/12/18/2023.12.18.572167},
+  eprint = {https://www.biorxiv.org/content/early/2023/12/18/2023.12.18.572167.full.pdf},
+  journal = {bioRxiv}
 }
 ```
 
