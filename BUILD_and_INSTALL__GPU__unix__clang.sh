@@ -13,10 +13,12 @@ echo
 if [ ! -d build_clang ]; then mkdir build_clang || exit 1; fi
 cd build_clang || exit 1
 
+ARCH3x="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37"
+ARCH3x="" ## no support any more for 3.x by latest CUDA toolkit compilers
 
 CC=clang CXX=clang++ \
 cmake -DGPUINUSE=1 -DCMAKE_INSTALL_PREFIX=${MYHOME} \
-    -DCMAKE_CUDA_FLAGS="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_37,code=sm_37 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_75,code=compute_75" \
+    -DCMAKE_CUDA_FLAGS="${ARCH3x} -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_75,code=compute_75" \
     ../src/  ||  (cd ..; exit 1)
 
 cmake --build . --config Release --target install  ||  (cd ..; exit 1)
