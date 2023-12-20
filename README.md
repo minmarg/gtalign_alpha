@@ -77,8 +77,7 @@ superposition and search method (with flexible structure clustering ability)
 
   `Linux_installer_mp/GTalign-linux64-installer-mp.sh`
 
-  On MS Windows (specific binaries for Windows 11 coming soon), run the 
-  GPU-version installer:
+  On MS Windows 10/11, run the GPU-version installer:
 
   `MS_Windows10_installer_GPU/GTalign-win64-installer.msi`
 
