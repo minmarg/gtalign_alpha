@@ -193,7 +193,8 @@ superposition and search method (with flexible structure clustering ability)
 
 The GTalign demo [notebook](GTalign_demo.ipynb) for Google Colab is now available. 
 The notebook showcases structure alignment for two large protein complexes -- virus 
-nucleocapsid variants 7a4i and 7a4j -- and runs on Google Colab with a Tesla T4 GPU.
+nucleocapsid variants 7a4i and 7a4j -- and runs on Google Colab with a Tesla T4 GPU 
+(finishes in a minute).
 
 ## Citation
 
