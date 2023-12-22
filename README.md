@@ -189,12 +189,15 @@ superposition and search method (with flexible structure clustering ability)
   The clustering options, which can be used in combination with other options to make
   clustering flexible, can be found in the complete list of [options](out/gtalign_options.md).
 
-## GTalign demo notebook on Google Colab
+## GTalign demo notebooks on Google Colab
 
-The GTalign demo [notebook](GTalign_demo.ipynb) for Google Colab is now available. 
-The notebook showcases structure alignment for two large protein complexes -- virus 
-nucleocapsid variants 7a4i and 7a4j -- and runs on Google Colab with a Tesla T4 GPU 
-(finishes in a minute).
+The GTalign demo notebooks, [GTalign_demo](GTalign_demo.ipynb) and 
+[GTalign_demo_search](GTalign_demo_search.ipynb), for Google Colab are available. 
+The [first](GTalign_demo.ipynb) notebook showcases structure alignment for two large 
+protein complexes -- virus nucleocapsid variants 7a4i and 7a4j -- and runs on Google 
+Colab with a Tesla T4 GPU (finishes in a minute).
+The [second](GTalign_demo_search.ipynb) demonstrates the alignment of all against all 
+queries of the PDB20 dataset, completing in half a minute.
 
 ## Citation
 
