@@ -1,4 +1,5 @@
 [![Release](https://img.shields.io/github/v/release/minmarg/gtalign_alpha)](https://github.com/minmarg/gtalign_alpha/releases)
+[![DOI](https://zenodo.org/badge/590487846.svg)](https://zenodo.org/doi/10.5281/zenodo.10433419)
 ![Header image](imgs/gtalign_header.jpg)
 
 # GTalign (alpha release)
@@ -46,7 +47,7 @@ superposition and search method (with flexible structure clustering ability)
 
 ## Available Platforms
 
-  The GTalign source code shoud compile and run on Linux, Ms Windows, and MaxOS. 
+  The GTalign source code should compile and run on Linux, MS Windows, and MaxOS. 
   GTalign was tested on and the binaries are provided for the following platforms:
 
   *  Linux x64
