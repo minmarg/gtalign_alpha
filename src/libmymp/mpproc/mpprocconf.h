@@ -51,6 +51,9 @@
 #define MPS1_TBINITSP_COMPLETEREFINE_XDIM 128
 // chunk size for dynamic scheduling policy (applied to reference structures)
 #define MPS1_TBINITSP_COMPLETEREFINE_CHSIZE 32
+// x-dimension for calculating secondary TMscores and chunk size for scheduling policy:
+#define MPDP_PRODUCTION_2TMSCORE_XDIM 128
+#define MPDP_PRODUCTION_2TMSCORE_CHSIZE 32
 
 
 // // x-dimension of thread block for initializing transformation matrices:

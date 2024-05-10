@@ -283,6 +283,7 @@ void TdClustWriter::MakeClusters()
         case CLOptions::osTMscoreGreater:
         case CLOptions::osTMscoreReference:
         case CLOptions::osTMscoreQuery:
+        case CLOptions::osTMscoreHarmonic:
             const_cast<float&>(clsthld) = mymax(0.0f, 1.0f - clsthld);
     };
 

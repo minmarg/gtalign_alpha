@@ -82,7 +82,8 @@ void TdFinalizer::CompressResultsPlain()
     char* annptr = annotations_.get();
     char* outptr = alignments_.get();
 
-    const int sortby = CLOptions::GetO_SORT();
+    static const int bsectmscore = CLOptions::GetO_2TM_SCORE();
+    static const int sortby = CLOptions::GetO_SORT();
 
     for(int strndx = 0; strndx < qrynstrs_; strndx++)
     {
@@ -90,10 +91,21 @@ void TdFinalizer::CompressResultsPlain()
         float tmscorer = GetOutputAlnDataField<float>(strndx, dp2oadScoreR);
         float rmsd = GetOutputAlnDataField<float>(strndx, dp2oadRMSD);
         float tmscoregrt = PCMAX(tmscoreq, tmscorer);
+        float tmscorehmn = (0.0f < tmscoregrt)? (2.f * tmscoreq * tmscorer) / (tmscoreq + tmscorer): 0.0f;
         float tmscore = tmscoregrt;
         if(sortby == CLOptions::osTMscoreReference) tmscore = tmscorer;
         if(sortby == CLOptions::osTMscoreQuery) tmscore = tmscoreq;
+        if(sortby == CLOptions::osTMscoreHarmonic) tmscore = tmscorehmn;
         if(sortby == CLOptions::osRMSD) tmscore = -rmsd;
+        if(bsectmscore && sortby > CLOptions::osRMSD) {
+            float sectmscoreq = GetOutputAlnDataField<float>(strndx, dp2oad2ScoreQ);
+            float sectmscorer = GetOutputAlnDataField<float>(strndx, dp2oad2ScoreR);
+            tmscore = PCMAX(sectmscoreq, sectmscorer);
+            float sectmscorehmn = (0.0f < tmscore)? (2.f * sectmscoreq * sectmscorer) / (sectmscoreq + sectmscorer): 0.0f;
+            if(sortby == CLOptions::os2TMscoreReference) tmscore = sectmscorer;
+            if(sortby == CLOptions::os2TMscoreQuery) tmscore = sectmscoreq;
+            if(sortby == CLOptions::os2TMscoreHarmonic) tmscore = sectmscorehmn;
+        }
 
         if(tmscoregrt < cubp_set_scorethld_)
             continue;
@@ -233,10 +245,13 @@ void TdFinalizer::FormatScoresPlain(
     int querylen,
     int dbstrlen)
 {
+    static const int bsectmscore = CLOptions::GetO_2TM_SCORE();
     int written;
     float rmsd = GetOutputAlnDataField<float>(strndx, dp2oadRMSD);
     float tmscoreq = GetOutputAlnDataField<float>(strndx, dp2oadScoreQ);
     float tmscorer = GetOutputAlnDataField<float>(strndx, dp2oadScoreR);
+    float sectmscoreq = GetOutputAlnDataField<float>(strndx, dp2oad2ScoreQ);
+    float sectmscorer = GetOutputAlnDataField<float>(strndx, dp2oad2ScoreR);
     float d0q = GetOutputAlnDataField<float>(strndx, dp2oadD0Q);
     float d0r = GetOutputAlnDataField<float>(strndx, dp2oadD0R);
     int psts = (int)GetOutputAlnDataField<float>(strndx, dp2oadPstvs);
@@ -253,6 +268,13 @@ void TdFinalizer::FormatScoresPlain(
     outptr += written;
     written = sprintf(outptr,"%s",NL);
     outptr += written;
+    if(bsectmscore) {
+        written = 
+        sprintf(outptr," 2TM-score (Refn./Query) = %.5f / %.5f", sectmscorer, sectmscoreq);
+        outptr += written;
+        written = sprintf(outptr,"%s",NL);
+        outptr += written;
+    }
     if(idts > 0) {
         written = 
             sprintf(outptr," Identities = %d/%d (%d%%)",idts,alnlen,idts*100/alnlen);
@@ -426,6 +448,7 @@ void TdFinalizer::GetSizeOfCompressedResultsPlain(
     size_t* szannot, size_t* szalns, size_t* szalnswodesc) const
 {
     MYMSG("TdFinalizer::GetSizeOfCompressedResultsPlain", 5);
+    static const int bsectmscore = CLOptions::GetO_2TM_SCORE();
     static const unsigned int sznl = (int)strlen(NL);
     static const unsigned int indent = OUTPUTINDENT;
 //     static const unsigned int annotlen = ANNOTATIONLEN;
@@ -433,7 +456,7 @@ void TdFinalizer::GetSizeOfCompressedResultsPlain(
     const unsigned int dscwidth = MAX_DESCRIPTION_LENGTH;//no wrap (pathname)
     const unsigned int alnwidth = CLOptions::GetO_WRAP();
     const unsigned int width = indent < dscwidth? dscwidth-indent: 1;
-    static const unsigned int headlines = 3;//number of lines for scores, etc.
+    static const unsigned int headlines = 3 + (bsectmscore==1);//number of lines for scores, etc.
     static const unsigned int footlines = 4;//number of lines for transformation matrix
     static const unsigned int maxlinelen = 170;//maximum length of lines other than alignment lines
     static const unsigned int maxsernlen = 13;//max length for serial number

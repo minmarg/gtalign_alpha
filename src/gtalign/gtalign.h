@@ -6,7 +6,7 @@
 #ifndef __gtalign_h__
 #define __gtalign_h__
 
-static const char*  version = "0.14.00";
+static const char*  version = "0.15.00";
 static const char*  verdate = "";
 
 static const char*  instructs = "\n\
@@ -72,10 +72,18 @@ Output control options (for search usage except --sort):\n\
                             0 implies all results are valid for report.\n\
                             NOTE: Also check the pre-screening options below.\n\
                         Default=0.5\n\
+--2tm-score                 Include secondary TM-score, 2TM-score: TM-score\n\
+                            calculated over matched secondary structures.\n\
 --sort=<code>               0: Sort results by the greater TM-score of the two;\n\
                             1: Sort by reference length-normalized TM-score;\n\
                             2: Sort by query length-normalized TM-score;\n\
-                            3: Sort by RMSD.\n\
+                            3: Sort by the harmonic mean of the two TM-scores;\n\
+                            4: Sort by RMSD.\n\
+                            When --2tm-score is set:\n\
+                            5: Sort by the greater 2TM-score;\n\
+                            6: Sort by reference length-normalized 2TM-score;\n\
+                            7: Sort by query length-normalized 2TM-score.\n\
+                            8: Sort by the harmonic mean of the 2TM-scores;\n\
                         Default=0\n\
 --nhits=<count>             Number of highest-scoring structures to list in\n\
                             the results for each query.\n\
@@ -266,74 +274,5 @@ Examples:\n\
 <> -v --cls=my_huge_structure_database.tar -o my_output_directory\n\
 \n\
 ";
-
-// <> --a2a=(<structs>|<dirs>|<DBs>) -o <out_dir> [<options>]\n
-// --a2a=(<structs>,<dirs>,<DBs>) Directory or database (constructed by maketmdb)\n
-//                             of structures to be aligned all-against-all. This is\n
-//                             more efficient than using --qrs and --rfs since the\n
-//                             same pair of structures will be compared once.\n
-// --outfmt=<code>             Output format:\n
-//                             0: full output with structural superpositions;\n
-//                               View superposed aligned regions in RasMol or PyMOL:\n
-//                                 rasmol -script <filename>_TM_sup\n
-//                                 pymol -d @<filename>_TM_sup.pml\n
-//                               View superposed C-alpha traces of all regions:\n
-//                                 rasmol -script <filename>_TM_sup_all\n
-//                                 pymol -d @<filename>_TM_sup_all.pml\n
-//                               View full-atom superposition of aligned regions:\n
-//                                 rasmol -script <filename>_TM_sup_atm\n
-//                                 pymol -d @<filename>_TM_sup_atm.pml\n
-//                               View full-atom superposition of all regions:\n
-//                                 rasmol -script <filename>_TM_sup_all_atm\n
-//                                 pymol -d @<filename>_TM_sup_all_atm.pml\n
-//                               View full-atom superposition with ligands:\n
-//                                 rasmol -script <filename>_TM_sup_all_atm_lig\n
-//                                 pymol -d @<filename>_TM_sup_all_atm_lig.pml\n
-//                             1: alignments and rotation matrices only;\n
-//                             2: compact tabular output format.\n
-//                         Default=1\n
-// --superp=<code>             Alignment algorithm:\n
-//                             0: sequence-independent alignment (GTalign);\n
-//                             1: sequence-dependent superposition (TMscore),\n
-//                                i.e., alignment by residue index;\n
-//                             2: sequence-dependent superposition (TMscore -c);\n
-//                                alignment by residue index and chain ID;\n
-//                                (--ter=0|1);\n
-//                             3: sequence-dependent superposition (TMscore -c);\n
-//                                alignment by residue index and chain order;\n
-//                                (--ter=0|1).\n
-//                         Default=0\n
-// -i <filename>               Align a pair of structures starting with an\n
-//                             alignment specified in this file in FASTA format.\n
-//                             NOTE: Valid for one pair given by --qrs and --rfs.\n
-// -I <filename>               Transform (rotate and translate) the query structure\n
-//                             given its alignment with the reference structure in\n
-//                             this file in FASTA format.\n
-//                             NOTE: Valid for one pair given by --qrs and --rfs.\n
-// --d0=<Angstroms>            Additionally, use this value (<50) of the normalizing\n
-//                             inter-residue distance d0 in the TM-score formula.\n
-// -u <normalization_length>   Normalize TM-score also by this length.\n
-//                             NOTE: TM-score > 1 if the specified value < the\n
-//                             minimum length of the structures being aligned.\n
-// -a <code>                   When thresholding on TM-score (-s), normalize it by\n
-//                             0: length of the reference (second) structure;\n
-//                             1: average length of the structures being aligned;\n
-//                             2: length of the shorter structure;\n
-//                             3: length of the longer structure.\n
-//                         Default=0\n
-// --cp                        Alignment with circular permutation.\n
-// --mirror                    Align the mirror image of the query structure(s).\n
-// 
-//                             NOTE: For a small number of queries, using a moderate\n
-//                             amount of memory (~4GB) is more efficient.\n
-// 
-// --dev-pass2memp=<percentage> GPU memory proportion dedicated to recalculation of\n
-//                             hits that passed significance threshold.\n
-//                             (Expected proportion of significant hits.)\n
-//                         Default=10\n
-// --io-filemap                Map files into memory.\n
-//                             In general, the performance with or without file\n
-//                             mapping is similar. In some systems, however,\n
-//                             mapping can lead to increased computation time.\n
 
 #endif//__gtalign_h__

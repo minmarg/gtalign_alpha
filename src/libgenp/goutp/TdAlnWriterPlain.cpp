@@ -381,11 +381,12 @@ void TdAlnWriter::WriteSearchInformationPlain(
 
     written = sprintf(tmpbuf," Legend:%s"
         "TM-score (Refn./Query), Reference/Query length-normalized TM-score%s"
+        "2TM-score, secondary TM-score excluding unmatched helices%s"
         "d0 (Refn./Query), Normalizing inter-residue distance d0 for Reference/Query%s"
         "RMSD, Root-mean-square deviation (A); Chn, Chain; (M), Model%s"
         "+, pairs of aligned residues within a distance of %.0f A%s"
         "Secondary structure: h, Helix; e, Strand; t, Turn%s%s%s",
-        NL,NL,NL,NL,EQUIVALENCE_DISTANCE,NL,NL,NL,NL);
+        NL,NL,NL,NL,NL,EQUIVALENCE_DISTANCE,NL,NL,NL,NL);
     BufferData(fp,
         buffer, szbuffer, outptr, offset,
         tmpbuf, written);

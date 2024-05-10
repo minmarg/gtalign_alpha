@@ -1,3 +1,8 @@
+0.15, May 2024
+
+* Introduction of the secondary TM-score, 2TM-score (--2tm-score)
+* Option to sort alignments by the harmonic mean (--sort)
+
 -.--, December 2023
 
 * Publication of the full software package, including source code

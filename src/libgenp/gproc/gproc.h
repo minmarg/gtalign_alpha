@@ -220,6 +220,9 @@ enum TDP2OutputAlnData {
     dp2oadScoreR,//TM-score normalized by the reference length
     dp2oadD0Q,//TM-score normalized by the specified length
     dp2oadD0R,//TM-score obtained using the specified d0 in normalization
+    nTDP2OutputAlnDataPart2,
+    dp2oad2ScoreQ = nTDP2OutputAlnDataPart2,//2TM-score normalized by the query length
+    dp2oad2ScoreR,//2TM-score normalized by the reference length
     nTDP2OutputAlnData
 };
 

@@ -55,6 +55,8 @@
 // x-dimension of thread block for calculating complete alignment refinement, 
 // used as a solution to relatively large kernel submission latency:
 #define CUS1_TBINITSP_COMPLETEREFINE_XDIM 32 //64 //128
+// thread block x-dimension x for calculating secondary TMscores;
+#define CUDP_PRODUCTION_2TMSCORE_DIM_X 128
 
 
 // x-dimension of thread block for initializing transformation matrices:

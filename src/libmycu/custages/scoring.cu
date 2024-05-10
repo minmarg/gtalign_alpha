@@ -786,7 +786,7 @@ void ProductionSaveBestScoresAndTMAmongBests(
         //array index for query
         QRYX = CUS1_TBSP_SCORE_MAX_XDIM,
         //#alignment data entries to write
-        nADT = (nTDP2OutputAlnData - dp2oadScoreQ)
+        nADT = (nTDP2OutputAlnDataPart2 - dp2oadScoreQ)
     };
     __shared__ float scvCache[CUS1_TBSP_SCORE_MAX_YDIM][CUS1_TBSP_SCORE_MAX_XDIM+1];
     __shared__ uint ndxCache[CUS1_TBSP_SCORE_MAX_YDIM][CUS1_TBSP_SCORE_MAX_XDIM+1];

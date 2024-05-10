@@ -251,9 +251,11 @@ public:
                 float tmscorer = GetOutputAlnDataField<float,dp2oadScoreR>(h_results, ntotstrs + rn);
                 float rmsd = GetOutputAlnDataField<float,dp2oadRMSD>(h_results, ntotstrs + rn);
                 float tmscoregrt = mymax(tmscoreq, tmscorer);
+                float tmscorehmn = (0.0f < tmscoregrt)? (2.f * tmscoreq * tmscorer) / (tmscoreq + tmscorer): 0.0f;
                 float distance = mymax(0.0f, 1.0f - tmscoregrt);
                 if(sortby == CLOptions::osTMscoreReference) distance = mymax(0.0f, 1.0f - tmscorer);
                 if(sortby == CLOptions::osTMscoreQuery) distance = mymax(0.0f, 1.0f - tmscoreq);
+                if(sortby == CLOptions::osTMscoreHarmonic) distance = mymax(0.0f, 1.0f - tmscorehmn);
                 if(sortby == CLOptions::osRMSD) distance = rmsd;
                 if(covonesided
                    ? (nalnres < covthld * (float)lenrfn && nalnres < covthld * (float)lenqry)

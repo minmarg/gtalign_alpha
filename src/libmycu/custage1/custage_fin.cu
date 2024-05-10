@@ -23,6 +23,7 @@
 #include "libmycu/custages/transform.cuh"
 #include "libmycu/custages2/covariance_fin_dp_refn_complete.cuh"
 #include "libmycu/custages2/covariance_production_dp_refn_complete.cuh"
+#include "libmycu/custages2/production_2tmscore.cuh"
 
 #include "libmycu/cudp/dpssw_tfm_btck.cuh"
 #include "libmycu/cudp/btck2match.cuh"
@@ -113,6 +114,12 @@ void stagefin::run_stagefin(
         qystr1len, dbstr1len, qystrnlen, dbstrnlen, dbxpad,
         tmpdpdiagbuffers, tmpdpalnpossbuffer, wrkmemtmibest, 
         wrkmemaux, alndatamem, tfmmem);
+
+
+    stagefin_produce_2TMscores(
+        streamproc, maxnsteps, nqystrs, ndbCstrs, nqyposs, ndbCposs,
+        qystr1len, dbstr1len, qystrnlen, dbstrnlen, dbxpad,
+        tmpdpalnpossbuffer, wrkmemaux, tfmmem, alndatamem);
 
     //revert transformation matrices if needed
     stagefin_adjust_tfms(
@@ -600,6 +607,46 @@ void stagefin::stagefin_produce_output_scores(
                 wrkmemtmibest, wrkmemaux, alndatamem, tfmmem);
     MYCUDACHECKLAST;
 }
+
+
+
+// -------------------------------------------------------------------------
+// stagefin_produce_2TMscores: calculate secondary TMscores, 2TMscores; 
+// complete version;
+// qystr1len, length of the largest query;
+// dbstr1len, length of the largest reference;
+// qystrnlen, length of the smallest query;
+// dbstrnlen, length of the smallest reference;
+//
+void stagefin::stagefin_produce_2TMscores(
+    cudaStream_t streamproc,
+    const uint maxnsteps,
+    const uint nqystrs, const uint ndbCstrs,
+    const uint /* nqyposs */, const uint ndbCposs,
+    const uint /* qystr1len */, const uint /* dbstr1len */,
+    const uint /*qystrnlen*/, const uint /*dbstrnlen*/,
+    const uint dbxpad,
+    const float* __restrict__ tmpdpalnpossbuffer,
+    const float* __restrict__ wrkmemaux,
+    const float* __restrict__ tfmmem,
+    float* __restrict__ alndatamem)
+{
+    static const int bsectmscore = CLOptions::GetO_2TM_SCORE();
+    if(bsectmscore == 0) return;
+
+    MYMSG("stagefin::stagefin_produce_2TMscores", 5);
+
+    //execution configuration for calculating 2tmscores:
+    dim3 nthrds_2tmscos(CUDP_PRODUCTION_2TMSCORE_DIM_X,1,1);
+    dim3 nblcks_2tmscos(ndbCstrs,nqystrs,1);
+
+    Production2TMscores<<<nblcks_2tmscos,nthrds_2tmscos,0,streamproc>>>(
+        ndbCstrs, ndbCposs, dbxpad, maxnsteps,
+        tmpdpalnpossbuffer, wrkmemaux, tfmmem, alndatamem);
+    MYCUDACHECKLAST;
+}
+
+
 
 // -------------------------------------------------------------------------
 // stagefin_adjust_tfms: revert transformation matrices if needed

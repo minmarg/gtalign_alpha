@@ -136,20 +136,32 @@ void InitAlnData(
             threadIdx.x] = 0.0f;
 
     //assign the fields outside the (nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT) boundaries:
-    if(nTTranformMatrix < nTDP2OutputAlnData &&
-       threadIdx.x > nTDP2OutputAlnData * (CUS1_TBINITSP_TFMINIT_XFCT-1) &&
-       threadIdx.x < nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT &&
-            threadIdx.x + (nTDP2OutputAlnData-nTTranformMatrix) + 1 >=
-            nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT)
+    // if(nTTranformMatrix < nTDP2OutputAlnData &&
+    //    threadIdx.x > nTDP2OutputAlnData * (CUS1_TBINITSP_TFMINIT_XFCT-1) &&
+    //    threadIdx.x < nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT &&
+    //         threadIdx.x + (nTDP2OutputAlnData-nTTranformMatrix) + 1 >=
+    //         nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT)
+    //     alndatamem[
+    //         (qryndx * ndbCstrs + dbstrndx) * nTDP2OutputAlnData + 
+    //         threadIdx.x + (nTDP2OutputAlnData-nTTranformMatrix)] = 0.0f;
+    //last warp:
+    if(threadIdx.x + nTDP2OutputAlnData >= nTDP2OutputAlnData * (CUS1_TBINITSP_TFMINIT_XFCT-1) &&
+       threadIdx.x + nTDP2OutputAlnData < nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT)
         alndatamem[
             (qryndx * ndbCstrs + dbstrndx) * nTDP2OutputAlnData + 
-            threadIdx.x + (nTDP2OutputAlnData-nTTranformMatrix)] = 0.0f;
+            threadIdx.x + nTDP2OutputAlnData] = 0.0f;
 
     //assign large values to RMSDs
     if(threadIdx.x == dp2oadRMSD + nTDP2OutputAlnData * ndx)
         alndatamem[
             (qryndx * ndbCstrs + dbstrndx) * nTDP2OutputAlnData + 
             threadIdx.x] = 9999.9f;
+
+    //assign outside the (nTDP2OutputAlnData * CUS1_TBINITSP_TFMINIT_XFCT) boundaries:
+    if(threadIdx.x + nTDP2OutputAlnData == dp2oadRMSD + nTDP2OutputAlnData * (CUS1_TBINITSP_TFMINIT_XFCT-1))
+        alndatamem[
+            (qryndx * ndbCstrs + dbstrndx) * nTDP2OutputAlnData + 
+            threadIdx.x + nTDP2OutputAlnData] = 9999.9f;
 }
 
 // -------------------------------------------------------------------------

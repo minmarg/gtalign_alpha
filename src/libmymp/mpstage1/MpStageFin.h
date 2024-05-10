@@ -69,6 +69,7 @@ public:
     virtual void Run() {
         MYMSG("MpStageFin::Run", 4);
         static const bool nodeletions = CLOptions::GetO_NO_DELETIONS();
+        static const int bsectmscore = CLOptions::GetO_2TM_SCORE();
         static const int referenced = CLOptions::GetO_REFERENCED();
         //produce alignment to refine superposition on
         Align(false/* constrainedbtck */);
@@ -83,6 +84,11 @@ public:
             tmpdpalnpossbuffer_, wrkmemaux_, alndatamem_, alnsmem_);
         //refine using production thresholds and calculate final scores for output
         ProduceOutputScores();
+        //2TM-scores if needed:
+        if(bsectmscore)
+            Production2TMscoresKernel(
+                querypmbeg_, bdbCpmbeg_,
+                tmpdpalnpossbuffer_, wrkmemaux_, tfmmem_, alndatamem_);
         //revert transformation matrices if needed
         if(referenced) RevertTfmMatricesKernel(tfmmem_);
     }
@@ -180,6 +186,14 @@ protected:
 
 
 protected:
+    void Production2TMscoresKernel(
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
+        const float* const __RESTRICT__ tmpdpalnpossbuffer,
+        const float* const __RESTRICT__ wrkmemaux,
+        const float* const __RESTRICT__ tfmmem,
+        float* const __RESTRICT__ alndatamem);
+
     void RevertTfmMatricesKernel(
         float* const __RESTRICT__ tfmmem);
 
@@ -227,6 +241,17 @@ protected:
         const int dbstrlenorg,
         const float* __RESTRICT__ tfm,
         float* const __RESTRICT__ tfmmem,
+        float* const __RESTRICT__ alndatamem);
+
+
+    void SaveBestQR2TMscores_Complete(
+        float best,
+        float gbest,
+        const int qryndx,
+        const int dbstrndx,
+        const int ndbCstrs,
+        const int qrylenorg,
+        const int dbstrlenorg,
         float* const __RESTRICT__ alndatamem);
 
 
@@ -777,6 +802,38 @@ void MpStageFin::SaveBestQRScoresAndTM_Phase2_logsearch_Complete(
 }
 
 // -------------------------------------------------------------------------
+// SaveBestQR2TMscores_Complete: complete version of saving the best
+// secondary scores calculated for the query and reference structures
+// directly to the production output memory region;
+// best, best 2TMscore calculated for the smaller length;
+// gbest, best 2TMscore calculated for the greater length;
+// qryndx, query serial number;
+// dbstrndx, reference serial number;
+// ndbCstrs, total number of reference structures in the chunk;
+// qrylenorg, dbstrlenorg, query and reference lengths;
+// NOTE: memory pointers should be aligned!
+// alndatamem, memory for full alignment information, including scores;
+// 
+inline
+void MpStageFin::SaveBestQR2TMscores_Complete(
+    float best,
+    float gbest,
+    const int qryndx,
+    const int dbstrndx,
+    const int ndbCstrs,
+    const int qrylenorg,
+    const int dbstrlenorg,
+    float* const __RESTRICT__ alndatamem)
+{
+    //save best scores
+    int mloc = (qryndx * ndbCstrs + dbstrndx) * nTDP2OutputAlnData;
+    //make best represent the query score:
+    if(dbstrlenorg < qrylenorg) myswap(best, gbest);
+    alndatamem[mloc + dp2oad2ScoreQ] = best / (float)qrylenorg;
+    alndatamem[mloc + dp2oad2ScoreR] = gbest / (float)dbstrlenorg;
+}
+
+// -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 
 
@@ -831,7 +888,7 @@ void MpStageFin::ProductionSaveBestScoresAndTMAmongBests(
     for(int f = 0; f < lnxN; f++)
         for(int ii = 0; ii < XDIM; ii++) ccm[f][ii] = 0.0f;
     #pragma omp simd collapse(2)
-    for(int f = dp2oadScoreQ; f < nTDP2OutputAlnData; f++)
+    for(int f = dp2oadScoreQ; f < nTDP2OutputAlnDataPart2; f++)
         for(int ii = 0; ii < XDIM; ii++) ccm[f][ii] = 0.0f;
 
     #pragma omp simd aligned(bdbCpmbeg:DATALN)
@@ -907,7 +964,7 @@ void MpStageFin::ProductionSaveBestScoresAndTMAmongBests(
                 tfmmem[tfmloc + f] = wrkmemtmibest[mloc + f];//READ/WRITE
 
             #pragma omp simd aligned(alndatamem:DATALN)
-            for(int f = dp2oadScoreQ; f < nTDP2OutputAlnData; f++)
+            for(int f = dp2oadScoreQ; f < nTDP2OutputAlnDataPart2; f++)
                 alndatamem[aloc + f] = ccm[f][ii];//WRITE
         }
     }

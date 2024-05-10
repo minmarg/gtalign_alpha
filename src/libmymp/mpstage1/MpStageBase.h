@@ -114,6 +114,22 @@ protected:
         float (* __RESTRICT__ dstv)[XDIM]);
 
 
+    template<int XDIM, int DATALN>
+    void Calc2TMscoresUnrl_Complete(
+        const int qryndx,
+        const int ndbCposs,
+        const int dbxpad,
+        const int maxnsteps,
+        const int qrydst, const int dbstrdst,
+        const int qrylen, const int dbstrlen,
+        const int qrypos, const int rfnpos, const float d02,
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
+        const float* const __RESTRICT__ tmpdpalnpossbuffer,
+        const float* __RESTRICT__ tfm,
+        float* __RESTRICT__ scv);
+
+
     template<bool WRITEFRAGINFO, bool CONDITIONAL>
     void SaveBestScoreAndTM_Complete(
         const float best,
@@ -187,6 +203,17 @@ protected:
     template<int XDIM>
     void StoreMinDst(
         float dst, float (* __RESTRICT__ dstv)[XDIM], int pi);
+
+
+    template<int DATALN>
+    void UpdateOneAlnPosScore_2TMscore(
+        const int qrydst, const int dbstrdst,
+        float d02, int pos, int po1, int dblen,
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
+        const float* const __RESTRICT__ tmpdpalnpossbuffer,
+        const float* __RESTRICT__ tfm,
+        float* __RESTRICT__ scv, int pi);
 
 
     template<bool DOUBLY_INVERTED = false>
@@ -763,6 +790,139 @@ void MpStageBase::StoreMinDst(
         dstv[2][pi] = dst;
     } else if(dst < dstv[3][pi])
         dstv[3][pi] = dst;
+}
+
+
+
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// UpdateOneAlnPosScore_2TMscore: update 2TMscore unconditionally for one 
+// alignment position;
+// qrydst, distance in positions to the beginning of query structure;
+// dbstrdst, distance in positions to the beginning of reference structure;
+// d02, d0 squared used for calculating score;
+// pos, position in alignment buffer tmpdpalnpossbuffer for coordinates;
+// po1, position in alignment buffer tmpdpalnpossbuffer for structure positions;
+// dblen, step (db length) by which coordinates of different dimension 
+// written in tmpdpalnpossbuffer;
+// tmpdpalnpossbuffer, coordinates of matched positions obtained by DP;
+// tfm, address of the transformation matrix;
+// scv, address of the vector of scores;
+//
+#if defined(OS_MS_WINDOWS)
+#define OMPDECLARE_MpStageBase_UpdateOneAlnPosScore_2TMscore
+#else 
+#pragma omp declare simd linear(pi,pos,po1:1) \
+  uniform(qrydst,dbstrdst, d02,dblen, tmpdpalnpossbuffer,tfm,scv) \
+  aligned(tmpdpalnpossbuffer:DATALN) \
+  notinbranch
+#endif
+template<int DATALN>
+inline
+void MpStageBase::UpdateOneAlnPosScore_2TMscore(
+    const int qrydst, const int dbstrdst,
+    float d02, int pos, int po1, int dblen,
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
+    const float* const __RESTRICT__ tmpdpalnpossbuffer,
+    const float* __RESTRICT__ tfm,
+    float* __RESTRICT__ scv, int pi)
+{
+    //TODO: make these constants global; also used in production_match2aln;
+    enum {bmQRDST2, bmQRYNDX, bmRFNNDX, bmTotal};
+
+    const int qp = tmpdpalnpossbuffer[po1 + bmQRYNDX * dblen];//float->int
+    const int rp = tmpdpalnpossbuffer[po1 + bmRFNNDX * dblen];//float->int
+
+    const char qss = PMBatchStrData::GetFieldAt<char,pmv2Dss>(querypmbeg, qrydst + qp);
+    const char rss = PMBatchStrData::GetFieldAt<char,pmv2Dss>(bdbCpmbeg, dbstrdst + rp);
+    if((qss == pmvHELIX || rss == pmvHELIX) && qss != rss)
+        return;
+
+    float qx = tmpdpalnpossbuffer[pos + dpapsQRYx * dblen];
+    float qy = tmpdpalnpossbuffer[pos + dpapsQRYy * dblen];
+    float qz = tmpdpalnpossbuffer[pos + dpapsQRYz * dblen];
+
+    float rx = tmpdpalnpossbuffer[pos + dpapsRFNx * dblen];
+    float ry = tmpdpalnpossbuffer[pos + dpapsRFNy * dblen];
+    float rz = tmpdpalnpossbuffer[pos + dpapsRFNz * dblen];
+
+    float dst = transform_and_distance2(tfm, qx, qy, qz,  rx, ry, rz);
+
+    scv[pi] += GetPairScore(d02, dst);//score
+}
+
+// -------------------------------------------------------------------------
+// Calc2TMscoresUnrl_Complete: calculate/reduce UNNORMALIZED 2TMscores for 
+// obtained superpositions; complete version; 
+// qryndx, query serial number;
+// ndbCposs, total number of reference positions in the chunk;
+// dbxpad, #pad positions along the dimension of reference structures;
+// maxnsteps, max number of steps to perform for each reference structure;
+// qrydst, distances in positions to the beginnings of the query structures;
+// dbstrdst, distances in positions to the beginnings of the reference structures;
+// qrylen, dbstrlen, query and reference lengths;
+// qrypos, rfnpos, starting query and reference positions;
+// d02, distance threshold;
+// NOTE: memory pointers should be aligned!
+// tmpdpalnpossbuffer, coordinates of matched positions obtained by DP;
+// tfm, cached transformation matrix;
+// scv, cache for scores;
+//
+template<int XDIM, int DATALN>
+inline
+void MpStageBase::Calc2TMscoresUnrl_Complete(
+    const int qryndx,
+    const int ndbCposs,
+    const int dbxpad,
+    const int maxnsteps,
+    const int qrydst, const int dbstrdst,
+    const int qrylen, const int dbstrlen,
+    const int qrypos, const int rfnpos, const float d02,
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
+    const float* const __RESTRICT__ tmpdpalnpossbuffer,
+    const float* __RESTRICT__ tfm,
+    float* __RESTRICT__ scv)
+{
+    //initialize cache:
+    #pragma omp simd
+    for(int pi = 0; pi < XDIM; pi++) scv[pi] = 0.0f;
+
+    const int dblen = ndbCposs + dbxpad;
+    //offset to the beginning of the data along the y axis wrt query qryndx: coordinates:
+    const int yofff = (qryndx * maxnsteps + 0/*sfragfctxndx*/) * dblen * nTDPAlignedPoss;
+    //offset to the beginning of the data along the y axis wrt query qryndx: positions:
+    const int yoff1 = (qryndx * maxnsteps + 1/*sfragfctxndx*/) * dblen * nTDPAlignedPoss;
+    const int maxnalnposs = mymin(qrylen - qrypos, dbstrlen - rfnpos);
+
+    //manually unroll along data blocks:
+    for(int ai = 0; ai < maxnalnposs; ai += XDIM)
+    {
+        //NOTE: aligned coordinates in tmpdpalnpossbuffer are in the reverse order!
+        //NOTE: qrypos == rfnpos as well as qrylen == dbstrlen here
+        int piend = mymin(XDIM, maxnalnposs - ai);
+        #pragma omp simd
+        for(int pi = 0; pi < piend; pi++) {
+            //yofff + dbstrdst + dbstrlen-1 - (rfnpos + ai + pi),
+            //NOTE: make position increment is 1:
+            int dppos = yofff + dbstrdst + dbstrlen-1 - (rfnpos + ai + piend-1) + pi;
+            int dppo1 = yoff1 + dbstrdst + dbstrlen-1 - (rfnpos + ai + piend-1) + pi;
+            UpdateOneAlnPosScore_2TMscore<DATALN>(
+                qrydst, dbstrdst,
+                d02, dppos, dppo1, dblen,
+                querypmbeg, bdbCpmbeg,
+                tmpdpalnpossbuffer,//coordinates
+                tfm, scv, pi);//tfm, scores
+        }
+    }
+
+    //sum reduction for scores
+    float sum = 0.0f;
+    #pragma omp simd reduction(+:sum)
+    for(int pi = 0; pi < XDIM; pi++) sum += scv[pi];
+    //write sum back to scv
+    scv[0] = sum;
 }
 
 

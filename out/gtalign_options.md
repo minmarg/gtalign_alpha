@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.14.00 (compiled with GPU support)
+gtalign 0.15.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search tool.
 (C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -62,10 +62,18 @@ Output control options (for search usage except --sort):
                             0 implies all results are valid for report.
                             NOTE: Also check the pre-screening options below.
                         Default=0.5
+--2tm-score                 Include secondary TM-score, 2TM-score: TM-score
+                            calculated over matched secondary structures.
 --sort=<code>               0: Sort results by the greater TM-score of the two;
                             1: Sort by reference length-normalized TM-score;
                             2: Sort by query length-normalized TM-score;
-                            3: Sort by RMSD.
+                            3: Sort by the harmonic mean of the two TM-scores;
+                            4: Sort by RMSD.
+                            When --2tm-score is set:
+                            5: Sort by the greater 2TM-score;
+                            6: Sort by reference length-normalized 2TM-score;
+                            7: Sort by query length-normalized 2TM-score.
+                            8: Sort by the harmonic mean of the 2TM-scores;
                         Default=0
 --nhits=<count>             Number of highest-scoring structures to list in
                             the results for each query.

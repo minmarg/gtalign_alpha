@@ -38,7 +38,8 @@ CLDEFINEASSIGNMENT( B_CLS_ONE_SIDED_COVERAGE, int, 0, value==0 || value==1, --cl
 CLDEFINEASSIGNMENT( B_CLS_OUT_SEQUENCES, int, 0, value==0 || value==1, --cls-out-sequences);
 CLDEFINEASSIGNMENT( B_CLS_ALGORITHM, int, 0, value>=0 && value<bcnBClustering, --cls-algorithm);
 CLDEFINEASSIGNMENT( O_S, float, 0.5f, value>=0.0f && value<1.0f, -s);
-CLDEFINEASSIGNMENT( O_SORT, int, 0, value>=0 && value<osnOSorting, --sort);
+CLDEFINEASSIGNMENT( O_2TM_SCORE, int, 0, value==0 || value==1, --2tm-score);
+CLDEFINEASSIGNMENT( O_SORT, int, 0, value>=0 && value<osnOSortingTotal, --sort);
 CLDEFINEASSIGNMENT( O_NHITS, int, 2000, value>0 && value<1000000, --nhits);
 CLDEFINEASSIGNMENT( O_NALNS, int, 2000, value>0 && value<1000000, --nalns);
 CLDEFINEASSIGNMENT( O_WRAP, int, 80, value>=40 && value<99999999, --wrap);

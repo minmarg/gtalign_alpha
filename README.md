@@ -104,7 +104,7 @@ superposition and search method (with flexible structure clustering ability)
 #### Installation
 
   Run the shell script for the GPU (Linux) and CPU versions, respectively, 
-  using GCC or LLVM/Clang compilers:
+  using GCC or LLVM/Clang compilers (takes several minutes to compile):
 
   `BUILD_and_INSTALL__GPU__unix.sh`
 
@@ -171,6 +171,22 @@ superposition and search method (with flexible structure clustering ability)
   For comparing protein complexes, it usually suffices to set `--ter=0`.
   The options `--ter=0 --split=2` are used to consider all chains present in structure 
   files when executing the program.
+
+## Alignment sorting
+
+  GTalign offers the `--sort` option to arrange alignment based on various criteria.
+  Users can choose to sort alignments by TM-score, RMSD (root-mean-squared deviation), or the 
+  secondary TM-score, 2TM-score, which is calculated over the alignment while excluding 
+  unmatched helices.
+  Consequently, the 2TM-score penalizes topological inconsistencies more than the TM-score.
+
+  Additionally, the `--sort` option allows for sorting by the harmonic mean of the 
+  TM-scores or 2TM-scores.
+  The harmonic mean is particularly effective in reducing the significance of structural 
+  alignments for pairs with large length differences.
+  Therefore, sorting by the harmonic mean may prove beneficial when seeking and analyzing 
+  evolutionarily related or structurally similar proteins with length ratios not exceeding 
+  several times.
 
 ## Clustering
 

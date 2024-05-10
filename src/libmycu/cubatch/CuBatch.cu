@@ -100,9 +100,12 @@ CuBatch::CuBatch(
     const int maxnqrsperchunk = CLOptions::GetDEV_QRS_PER_CHUNK();
     const size_t szstats = maxnqrsperchunk * nDevGlobVariables;
     const size_t nfilterdata = GetCurrentMaxNDbStrs() * nTFilterData;
+    //filtering condition for clustering:
+    bool condition4filter0 = 
+        clustwriter_;// clustwriter_ && (clstonesided == 0) && (clstcoverage > 0.001f);
 
     //if filtering in use, all GPUs work on their own copy
-    if(/*1 < ringsize_ &&*/ (0.0f < seqsimthrscore || 0.0f < prescore)) {
+    if(/*1 < ringsize_ &&*/ (0.0f < seqsimthrscore || 0.0f < prescore || condition4filter0)) {
         //NOTE: allocate NBATCHSTRDATA buffers to have one more available when
         //NOTE: new data arrives; synchronization with Finalizer makes 2 enough;
         for(int i = 0; i < NBATCHSTRDATA; i++)

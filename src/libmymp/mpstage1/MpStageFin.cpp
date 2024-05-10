@@ -1699,6 +1699,117 @@ INSTANTIATE_MpStageFin_ProductionFragmentBasedDPAlignmentRefinementPhase2_logsea
 
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
+// Production2TMscoresKernel: calculate secondary TM-scores, 2TM-scores, and 
+// write them to memory;
+// tmpdpalnpossbuffer, coordinates of matched positions obtained by DP;
+// wrkmemaux, auxiliary working memory (includes the section of scores);
+// tfmmem, memory of transformation matrices;
+// alndatamem, memory for full alignment information, including scores;
+// 
+void MpStageFin::Production2TMscoresKernel(
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
+    const float* const __RESTRICT__ tmpdpalnpossbuffer,
+    const float* const __RESTRICT__ wrkmemaux,
+    const float* const __RESTRICT__ tfmmem,
+    float* const __RESTRICT__ alndatamem)
+{
+    enum{
+        XDIM = MPDP_PRODUCTION_2TMSCORE_XDIM
+    };
+
+    MYMSG("MpStageFin::Production2TMscoresKernel", 4);
+    static const std::string preamb = "MpStageFin::Production2TMscoresKernel: ";
+    static const int nthreads = CLOptions::GetCPU_THREADS();
+    constexpr int memalignment = mycemin((size_t)PMBSdatalignment, CuMemoryBase::GetMinMemAlignment());
+
+    //execution configuration for calculating 2tmscores:
+    const int nblocks_x = ndbCstrs_;
+    const int nblocks_y = nqystrs_;
+
+    size_t chunksize_helper = 
+        ((size_t)nblocks_y * (size_t)nblocks_x + (size_t)nthreads - 1) / nthreads;
+    const int chunksize = (int)mymin(chunksize_helper, (size_t)MPDP_PRODUCTION_2TMSCORE_CHSIZE);
+
+    //cache for for scores and tfm: 
+    float scv[XDIM];
+    float tfm[nTTranformMatrix];
+
+    //NOTE: constant member pointers are shared by definition;
+    #pragma omp parallel num_threads(nthreads) default(shared) \
+        private(scv, tfm)
+    {
+        #pragma omp for collapse(2) schedule(static, chunksize)
+        for(int qi = 0; qi < nblocks_y; qi++)
+            for(int ri = 0; ri < nblocks_x; ri++)
+            {//threads process references
+                //check convergence:
+                int mloc0 = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs_;
+                tfm[6] = wrkmemaux[mloc0 + ri];//reuse cache
+                if(((int)(tfm[6])) & (CONVERGED_LOWTMSC_bitval))
+                    continue;
+
+                const int qrylenorg = PMBatchStrData::GetLengthAt(querypmbeg, qi);
+                const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
+                const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
+                const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+
+                enum {qrypos = 0, rfnpos = 0};
+                int qrylen, dbstrlen;
+
+                //NOTE: #matched positions tawmvNAlnPoss written at sfragfct==0:
+                mloc0 = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars) * ndbCstrs_;
+                qrylen = dbstrlen = wrkmemaux[mloc0 + tawmvNAlnPoss * ndbCstrs_ + ri];
+
+                //READ globally best transformation matrix for a pair:
+                mloc0 = (qi * ndbCstrs_ + ri) * nTTranformMatrix;
+                #pragma omp simd aligned(tfmmem:memalignment)
+                for(int f = 0; f < nTTranformMatrix; f++)
+                    tfm[f] = tfmmem[mloc0 + f];
+
+                //threshold calculated for the original lengths
+                const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+                const float d02 = SQRD(d0);
+
+                Calc2TMscoresUnrl_Complete<XDIM,memalignment>(
+                    qi/*qryndx*/, ndbCposs_, dbxpad_, maxnsteps_,
+                    qrydst, dbstrdst, qrylen, dbstrlen, qrypos, rfnpos, d02,
+                    querypmbeg, bdbCpmbeg, tmpdpalnpossbuffer, tfm, scv);
+
+                const float best = scv[0];//score
+
+
+                //calculate the score for the larger structure of the two:
+                //threshold calculated for the greater length
+                const int greaterlen = mymax(qrylenorg, dbstrlenorg);
+                const float g0 = GetD0fin(greaterlen, greaterlen);
+                const float g02 = SQRD(g0);
+                float gbest = best;//score calculated for the other structure
+
+                if(qrylenorg != dbstrlenorg) {
+                    Calc2TMscoresUnrl_Complete<XDIM,memalignment>(
+                        qi/*qryndx*/, ndbCposs_, dbxpad_, maxnsteps_,
+                        qrydst, dbstrdst, qrylen, dbstrlen, qrypos, rfnpos, g02,
+                        querypmbeg, bdbCpmbeg, tmpdpalnpossbuffer, tfm, scv);
+                    gbest = scv[0];//score
+                }
+
+
+                //NOTE: write directly to production output memory:
+                SaveBestQR2TMscores_Complete(
+                    best, gbest,  qi/*qryndx*/, ri/*dbstrndx*/, ndbCstrs_, 
+                    qrylenorg, dbstrlenorg, alndatamem);
+            }//omp for
+        //implicit barrier here
+    }
+}
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+
+
+
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
 // RevertTfmMatricesKernel: revert transformation matrices;
 // NOTE: memory pointers should be aligned!
 // wrkmemaux, auxiliary working memory;

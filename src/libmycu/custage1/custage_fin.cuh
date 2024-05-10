@@ -110,6 +110,20 @@ protected:
         float* __restrict__ tfmmem
     );
 
+    static void stagefin_produce_2TMscores(
+        cudaStream_t streamproc,
+        const uint maxnsteps,
+        const uint nqystrs, const uint ndbCstrs,
+        const uint /* nqyposs */, const uint ndbCposs,
+        const uint /* qystr1len */, const uint /* dbstr1len */,
+        const uint /*qystrnlen*/, const uint /*dbstrnlen*/,
+        const uint dbxpad,
+        const float* __restrict__ tmpdpalnpossbuffer,
+        const float* __restrict__ wrkmemaux,
+        const float* __restrict__ tfmmem,
+        float* __restrict__ alndatamem
+    );
+
     static void stagefin_adjust_tfms(
         cudaStream_t streamproc,
         const uint nqystrs, const uint ndbCstrs,

@@ -49,9 +49,11 @@ __global__ void MakeDbCandidateList(
     for(uint dbstrndx0 = 0; dbstrndx0 < ndbCstrs; dbstrndx0 += blockDim.x)
     {
         //update the prefix sums originated from processing the last data block:
-        //(NOTE: used after the first sync below /skip sync here/)
         if(threadIdx.x == 0 && dbstrndx0)
             strdata[threadIdx.y][PREPXS] = strdata[threadIdx.y][pad + lXDIM - 1];
+
+        //NOTE: strdata is overwritten below, sync:
+        __syncthreads();
 
         uint dbstrndx = dbstrndx0 + threadIdx.x;//reference index
         int value = 0;//convflag for lXFLG and dbstrlen for lXLEN

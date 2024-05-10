@@ -34,8 +34,14 @@ enum TOSorting {
     osTMscoreGreater,
     osTMscoreReference,
     osTMscoreQuery,
+    osTMscoreHarmonic,
     osRMSD,
-    osnOSorting
+    osnOSorting,
+    os2TMscoreGreater = osnOSorting,
+    os2TMscoreReference,
+    os2TMscoreQuery,
+    os2TMscoreHarmonic,
+    osnOSortingTotal
 };
 enum TOOutputFormat {
     oofFull,
@@ -101,6 +107,7 @@ CLDECLAREOPTION( B_CLS_ONE_SIDED_COVERAGE, int, int, );
 CLDECLAREOPTION( B_CLS_OUT_SEQUENCES, int, int, );
 CLDECLAREOPTION( B_CLS_ALGORITHM, int, int, );
 CLDECLAREOPTION( O_S, float, float, );
+CLDECLAREOPTION( O_2TM_SCORE, int, int, );
 CLDECLAREOPTION( O_SORT, int, int, );
 CLDECLAREOPTION( O_NHITS, int, int, );
 CLDECLAREOPTION( O_NALNS, int, int, );

@@ -90,6 +90,7 @@ int main( int argc, char *argv[] )
     std::string     clsalgorithm;//clustering algorithm
     //
     std::string     thrscore;//threshold score
+    bool            sectmscore = 0;//include 2TM-score in calculations
     std::string     sortby;//key code for sorting results
     std::string     nhits;//#hits to show
     std::string     nalns;//#alignments to output
@@ -218,8 +219,8 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         gtaOpt_cls_one_sided_coverage, gtaOpt_cls_out_sequences,
         gtaOpt_cls_algorithm,
         //
-        gtaOpt_s, gtaOpt_sort, gtaOpt_nhits, gtaOpt_nalns, gtaOpt_wrap,
-        gtaOpt_no_deletions, gtaOpt_referenced, gtaOpt_outfmt,
+        gtaOpt_s, gtaOpt_2tm_score, gtaOpt_sort, gtaOpt_nhits, gtaOpt_nalns,
+        gtaOpt_wrap, gtaOpt_no_deletions, gtaOpt_referenced, gtaOpt_outfmt,
         //
         gtaOpt_infmt, gtaOpt_atom, gtaOpt_hetatm, gtaOpt_ter, gtaOpt_split,
         gtaOpt_superp,
@@ -260,6 +261,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         {"cls-algorithm", my_required_argument, gtaOpt_cls_algorithm},
         //
         {"s", my_required_argument, gtaOpt_s},
+        {"2tm-score", my_no_argument, gtaOpt_2tm_score},
         {"sort", my_required_argument, gtaOpt_sort},
         {"nhits", my_required_argument, gtaOpt_nhits},
         {"nalns", my_required_argument, gtaOpt_nalns},
@@ -346,6 +348,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
                     case gtaOpt_cls_algorithm:  clsalgorithm = myoptarg; break;
                     //
                     case gtaOpt_s:      thrscore = myoptarg; break;
+                    case gtaOpt_2tm_score: sectmscore = 1; break;
                     case gtaOpt_sort:   sortby = myoptarg; break;
                     case gtaOpt_nhits:  nhits = myoptarg; break;
                     case gtaOpt_nalns:  nalns = myoptarg; break;
@@ -526,14 +529,24 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
             CLOPTASSIGN(O_S, f);
         }
 
+        CLOPTASSIGN(O_2TM_SCORE, sectmscore);
+
         if(!clsdblst.empty()) {
             if(!thrscore.empty()) warning("Option -s ignored for clustering.");
             CLOPTASSIGN(O_S, 0.0f);
+            if(CLOptions::GetO_2TM_SCORE()) {
+                error("Option --2tm-score cannot be set for clustering.");
+                return EXIT_FAILURE;
+            }
         }
 
         if( !sortby.empty()) {
             if( mystring2int(c, sortby, "Invalid argument of option --sort."))
                 return EXIT_FAILURE;
+            if(CLOptions::GetO_2TM_SCORE() == 0 && CLOptions::osnOSorting <= c) {
+                error("Set option --2tm-score to sort results by 2TM-score.");
+                return EXIT_FAILURE;
+            }
             CLOPTASSIGN(O_SORT, c);
         }
 

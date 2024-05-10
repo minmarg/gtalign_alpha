@@ -35,6 +35,7 @@ add_library( mycu STATIC
 	custages2/covariance_dp_refn_complete.cu
 	custages2/covariance_fin_dp_refn_complete.cu
 	custages2/covariance_production_dp_refn_complete.cu
+	custages2/production_2tmscore.cu
 #
 #	custgfrg/local_similarity0.cu
 	custgfrg/local_similarity02.cu
