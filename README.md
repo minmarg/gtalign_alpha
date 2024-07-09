@@ -47,7 +47,7 @@ superposition and search method (with flexible structure clustering ability)
 
 ## Available Platforms
 
-  The GTalign source code should compile and run on Linux, MS Windows, and MaxOS. 
+  The GTalign source code should compile and run on Linux, MS Windows, and macOS. 
   GTalign was tested on and the binaries are provided for the following platforms:
 
   *  Linux x64
@@ -81,6 +81,17 @@ superposition and search method (with flexible structure clustering ability)
   On MS Windows 10/11, run the GPU-version installer:
 
   `MS_Windows10_installer_GPU/GTalign-win64-installer.msi`
+
+## Installing Conda packages on Linux and macOS
+
+  To install the multiprocessing version (CPU) of GTalign on Linux and macOS, run:
+
+  `conda install minmarg::gtalign_mp`
+
+  For the GPU version of GTalign, which is available as a Conda 
+  package on Linux, use:
+
+  `conda install minmarg::gtalign_gpu`
 
 ## Installation from source code
 
