@@ -229,23 +229,26 @@ queries of the PDB20 dataset, completing in half a minute.
 
 ## Citation
 
-If you use the GTalign software or data, please cite:
+If you use, reference, or benefit from the GTalign software or data, please cite:
 
-Margelevicius, M. GTalign: High-performance protein structure alignment, 
-superposition, and search. bioRxiv 2023.12.18.572167; (2023). 
-doi: https://doi.org/10.1101/2023.12.18.572167
+Margelevicius, M. GTalign: spatial index-driven protein structure alignment, 
+superposition, and search. Nat Commun 15, 7305 (2024). 
+https://doi.org/10.1038/s41467-024-51669-z
 
 ```bibtex
-@article{Margelevicius2023.12.18.572167,
-  author = {Mindaugas Margelevicius},
-  title = {GTalign: High-performance protein structure alignment, superposition, and search},
-  elocation-id = {2023.12.18.572167},
-  year = {2023},
-  doi = {10.1101/2023.12.18.572167},
-  publisher = {Cold Spring Harbor Laboratory},
-  URL = {https://www.biorxiv.org/content/early/2023/12/18/2023.12.18.572167},
-  eprint = {https://www.biorxiv.org/content/early/2023/12/18/2023.12.18.572167.full.pdf},
-  journal = {bioRxiv}
+@article{Margelevicius_s41467-024-51669-z,
+  author = {Margelevi{\v{c}}ius, Mindaugas},
+  title = {GTalign: spatial index-driven protein structure alignment, superposition, and search},
+  journal = {Nature Communications},
+  year = {2024},
+  month = {Aug},
+  day = {24},
+  volume = {15},
+  number = {1},
+  pages = {7305},
+  issn = {2041-1723},
+  doi = {10.1038/s41467-024-51669-z},
+  url = {https://doi.org/10.1038/s41467-024-51669-z}
 }
 ```
 
