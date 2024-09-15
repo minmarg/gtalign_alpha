@@ -14,7 +14,8 @@ superposition and search method (with flexible structure clustering ability)
   *  Configurable GPU memory
   *  Utilization of multiple GPUs
   *  Tested on NVIDIA Pascal (GeForce GTX 1080MQ), Turing (GeForce RTX 2080Ti, GTX 1650), 
-  Volta (V100), Ampere (A100), and Ada Lovelace (GeForce RTX 4090) GPU architectures
+  Volta (V100), Ampere (A100), Ada Lovelace (GeForce RTX 4090), and 
+  Hopper (H100 PCIe, NVL, and SXM) GPU architectures
   *  Same executable for different architectures
   *  `>`1000x faster on a single GPU (Volta) than TM-align
   *  Fast prescreening for similarities in both **sequence** and **structure** space (further n-fold speedup for database searches)
@@ -217,6 +218,57 @@ superposition and search method (with flexible structure clustering ability)
   The clustering options, which can be used in combination with other options to make
   clustering flexible, can be found in the complete list of [options](out/gtalign_options.md).
 
+## Usage tips and recommendations
+
+### Optimizing performance for large datasets
+
+  * **Leverage fast searching for large data**  
+    Use fast searching (`--speed=13`) when processing very large datasets to significantly 
+    reduce runtime.
+
+  * **Set TM-score threshold for prefiltering**  
+    Specify a TM-score threshold of 0.5 or higher (e.g., `--pre-score=0.5`) for prefiltering 
+    structures in large datasets. 
+    This helps to limit intense computations to relevant structures.
+
+  * **Enable cached data for faster disk access**  
+    Utilize the `-c <cache_directory>` option to cache data and speed up reading from 
+    disk when working with numerous query structures.
+
+### Enhancing Parallelism and CPU Utilization
+
+  * **Adjust query chunk size for better parallelization**  
+    Reduce the total query length per chunk 
+    (e.g., `--dev-queries-total-length-per-chunk=1500`) to fit queries more efficiently into 
+    chunks and increase the degree of parallelization.
+
+  * **Increase data-reading threads on high-CPU systems**  
+    For systems equipped with many CPU cores (`>=24`), consider increasing the number of 
+    data-reading threads (e.g., `--cpu-threads-reading=20`) using fast searching and 
+    prefiletring. 
+    This reduces the risk of data loading becoming a bottleneck during fast GPU-based 
+    calculations.
+
+### Fine-tuning output and memory management
+
+  * **Sort alignments by TM-score normalized by query length**  
+    Sort alignments by the query length-normalized TM-score (`--sort=2`) to prioritize 
+    structural similarities extending across larger portions of query structures.
+
+  * **Generate transformation matrices for reference structures**  
+    Use `--referenced` to generate transformation matrices for reference structures. 
+    This allows you to visually inspect all reference structures superimposed on a 
+    query in a graphical environment.
+
+  * **Consider all chains in structure files**  
+    Specify `--ter=0` and `--split=2` to include all chains in structure files in the 
+    alignment process.
+
+  * **Optimize memory usage**  
+    Control the memory allocation for GTalign using the `--dev-mem` option. 
+    This allows for running multiple instances of GTalign simultaneously on a single 
+    GPU or CPU.
+
 ## GTalign demo notebooks on Google Colab
 
 The GTalign demo notebooks, [GTalign_demo](GTalign_demo.ipynb) and 
@@ -238,7 +290,7 @@ https://doi.org/10.1038/s41467-024-51669-z
 ```bibtex
 @article{Margelevicius_s41467-024-51669-z,
   author = {Margelevi{\v{c}}ius, Mindaugas},
-  title = {GTalign: spatial index-driven protein structure alignment, superposition, and search},
+  title = {{GTalign}: spatial index-driven protein structure alignment, superposition, and search},
   journal = {Nature Communications},
   year = {2024},
   month = {Aug},
