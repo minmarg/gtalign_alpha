@@ -21,7 +21,7 @@ superposition and search method (with flexible structure clustering ability)
   *  Fast prescreening for similarities in both **sequence** and **structure** space (further n-fold speedup for database searches)
   *  Alignment of complexes up to 65,535 residues long; 7a4i and 7a4j (37,860 residues each) complexes alignment is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
-  *  Running on Ada Lovelace is ~1.5x faster than on Ampere
+  *  Running on Ada Lovelace is ~1.5x faster than on Ampere, and running on Hopper is even faster than on Ada Lovelace
   *  More sensitive and accurate compared to TM-align when using deep superposition search
   *  Correct TM-scores are guaranteed for produced superpositions
   *  Correct RMSDs are guaranteed for produced alignments
