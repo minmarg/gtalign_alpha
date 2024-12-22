@@ -59,7 +59,8 @@ public:
 
     InputFilelist(const std::vector<std::string>& dnamelst,
                 const std::vector<std::string>& sfxlst,
-                const bool clustering = false);
+                const bool clustering = false,
+                const bool construct = true);
     ~InputFilelist();
 
     void ConstructFileList();

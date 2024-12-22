@@ -25,6 +25,10 @@ const char* PROGDIR = NULL;
 const char* PROGNAME = NULL;
 const char* PROGVERSION = NULL;
 const char* PROGREFERENCES[] = {
+    "Margelevicius, M. "
+    "GTalign: spatial index-driven protein structure alignment, superposition, and search. "
+    "Nat Commun 15, 7305 (2024).",
+    // "https://doi.org/10.1038/s41467-024-51669-z",
     NULL
 };
 

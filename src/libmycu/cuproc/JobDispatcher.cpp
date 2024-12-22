@@ -54,7 +54,7 @@ JobDispatcher::JobDispatcher(
     qrsreader_(NULL)
 {
     queries_.reset(new InputFilelist(inputlist, sfxlst));
-    references_.reset(new InputFilelist(dnamelist, sfxlst));
+    references_.reset(new InputFilelist(dnamelist, sfxlst, false/*clustering*/, false/*construct*/));
 
     if(!queries_ || !references_)
         throw MYRUNTIME_ERROR("JobDispatcher: Failed to construct structure lists.");
@@ -128,17 +128,27 @@ JobDispatcher::~JobDispatcher()
 // CreateReader: create the thread for reading reference data from files
 //
 void JobDispatcher::CreateReader( 
-    int maxstrlen,
-    bool mapped,
-    int ndatbufs,
-    int nagents)
+    int maxstrlen, bool mapped, int ndatbufs, int nagents,
+    size_t chunkdatasize, size_t chunkdatalen, size_t chunknstrs)
 {
     MYMSG("JobDispatcher::CreateReader", 3);
     const bool indexed = true;
     const bool clustering = clustlist_.size();
     InputFilelist* references = clustering? queries_.get(): references_.get();
     size_t cputhsread = CLOptions::GetCPU_THREADS_READING();
-    size_t nthreads = mymin(cputhsread, references->GetStrFilelist().size());
+    size_t nthreads = cputhsread;
+    int cacheflag = TdDataReader::tdrcheNotSet;
+
+    if(!clustering && cachedir_)
+        cacheflag = TdDataReader::GetDbsCacheFlag(
+                nagents, cachedir_, GetDNamelist(),
+                chunkdatasize, chunkdatalen, chunknstrs);
+
+    if(cacheflag != TdDataReader::tdrcheReadCached) {
+        references->ConstructFileList();
+        nthreads = mymin(cputhsread, references->GetStrFilelist().size());
+    }
+
     for(size_t n = 0; n < nthreads; n++) {
         std::unique_ptr<TdDataReader> tdr(
             new TdDataReader(
@@ -954,7 +964,8 @@ void JobDispatcher::Run()
             CLOptions::GetDEV_MAXRLEN(),
             CLOptions::GetIO_FILEMAP(),
             CLOptions::GetIO_NBUFFERS(),
-            hostworkers_.size());//nagents: not updated
+            hostworkers_.size(),//nagents: not updated
+            chunkdatasize, chunkdatalen, chunknstrs);
 
         MYMSGBEGl(1)
             char strbuf[BUF_MAX];
@@ -1317,7 +1328,8 @@ void JobDispatcher::RunClust()
             CLOptions::GetDEV_MAXRLEN(),
             CLOptions::GetIO_FILEMAP(),
             CLOptions::GetIO_NBUFFERS(),
-            hostworkers_.size());//nagents: not updated
+            hostworkers_.size(),//nagents: not updated
+            chunkdatasize, chunkdatalen, chunknstrs);
 
         MYMSGBEGl(1)
             char strbuf[BUF_MAX];

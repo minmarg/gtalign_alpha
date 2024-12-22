@@ -1,9 +1,9 @@
 ```
 
-gtalign 0.15.00 (compiled with GPU support)
+gtalign 0.16.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search tool.
-(C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
+(C)2021-2025 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
 
 
 Usage (one of the two):
@@ -87,6 +87,10 @@ Output control options (for search usage except --sort):
                             produced alignments.
 --referenced                Produce transformation matrices for reference
                             structures instead of query(-ies).
+--outfmt=<code>             Format of results:
+                            0: Plain;
+                            1: JSON.
+                        Default=0
 
 Interpretation options:
 --infmt=<code>              Format of input structures:

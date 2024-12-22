@@ -96,7 +96,13 @@ public:
     TdDataReader();
     ~TdDataReader();
 
-    std::mutex& GetPrivateMutex() {return mx_dataccess_;}
+    static int GetDbsCacheFlag(
+        int nagents, 
+        const char* cachedir,
+        const std::vector<std::string>& inputlist,
+        size_t chunkdatasize, size_t chunkdatalen, size_t chunknstrs);
+
+    // std::mutex& GetPrivateMutex() {return mx_dataccess_;}
 
     //{{NOTE: messaging functions accessed from outside!
     void Notify(
@@ -128,6 +134,8 @@ public:
         );
         //lock is back; unset the response
         int rspmsg = rsp_msg_;
+        //NOTE: master may change rsp after the reader set it repeatedly!
+        //NOTE: may lead to dead lock when chunks delivered non-continuously!
         if( rsp_msg_!= TREADER_MSG_ERROR )
             rsp_msg_ = TREADER_MSG_UNSET;
         return rspmsg;

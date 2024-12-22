@@ -48,7 +48,8 @@ const std::string InputFilelist::knownexts_[] = {
 InputFilelist::InputFilelist(
     const std::vector<std::string>& dnamelst, 
     const std::vector<std::string>& sfxlst,
-    const bool clustering)
+    const bool clustering,
+    const bool construct)
 :
     dnamelst_(dnamelst),
     sfxlst_(sfxlst),
@@ -74,7 +75,7 @@ InputFilelist::InputFilelist(
         throw MYRUNTIME_ERROR("InputFilelist::InputFilelist: Not enough memory.");
     }
 
-    ConstructFileList();
+    if(construct) ConstructFileList();
 }
 
 // -------------------------------------------------------------------------

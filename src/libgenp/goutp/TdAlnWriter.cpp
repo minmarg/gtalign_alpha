@@ -336,8 +336,8 @@ void TdAlnWriter::GetOutputFilename(
     const int qrynr)
 {
     std::string::size_type pos;
-//     int outfmt = CLOptions::GetB_FMT();
-    const char* ext = "out";//(outfmt==CLOptions::ofJSON)? "json": "out";
+    static const int outfmt = CLOptions::GetO_OUTFMT();
+    const char* ext = (outfmt == CLOptions::oofJSON)? "json": "out";
     char tail[20];
 
     sprintf(tail, "__%d.%s", qrynr, ext);

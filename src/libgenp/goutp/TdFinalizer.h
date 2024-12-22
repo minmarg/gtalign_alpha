@@ -210,11 +210,11 @@ protected:
     void GetSizeOfCompressedResultsJSON(
         size_t* szannot, size_t* szalns, size_t* szalnswodesc) const;
 
-    void MakeAnnotationJSON(char*& outptr, const char* desc,
-        const int maxoutlen, const float score) const;
+    void MakeAnnotationJSON(char*& outptr,
+        const int strndx, const char* desc,
+        const unsigned int alnlen, const int dbstrlen) const;
 
-    void FormatScoresJSON(char*& outptr,
-        int strndx, unsigned int alnlen, float score);
+    void FormatScoresJSON(char*& outptr, int strndx, unsigned int alnlen);
 
     void FormatAlignmentJSON(char*& outptr,
         int strndx, unsigned int orgstrndx, unsigned int dbstr2dst,

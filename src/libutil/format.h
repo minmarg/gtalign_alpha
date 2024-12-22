@@ -90,7 +90,8 @@ void FormatDescription(
         linepos++;
     }
 
-    if(maxoutlen <= outpos && 3 < maxoutlen) {
+    // if(maxoutlen <= outpos && 3 < maxoutlen) {
+    if(maxoutlen < outpos && 3 < maxoutlen) {
         for(int i=1; i<=3; i++) *(outptr-i) = '.';
     }
 }
@@ -100,42 +101,47 @@ void FormatDescription(
 // NOTE: space is assumed to be pre-allocated;
 // outptr, pointer to the output buffer;
 // desc, description to copy;
+// desclen, description length;
 // maxoutlen, maximum length of output description;
 // outpos, current position in the output buffer;
 inline
 void FormatDescriptionJSON( 
     char*& outptr,
     const char* desc,
+    int desclen,
     const int maxoutlen,
     int& outpos)
 {
-    if(!desc) return;
+    if(!desc || maxoutlen <= 0) return;
 
-    for(; *desc && (*desc==' '||*desc=='\t'||*desc=='\n'||*desc=='\r'); desc++);
+    for(; *desc && (*desc==' '||*desc=='\t'||*desc=='\n'||*desc=='\r'); desc++, desclen--);
 
-    while(*desc && outpos < maxoutlen) {
-        if(*desc==' '||*desc=='\t') {
-            for(; *desc && (*desc==' '||*desc=='\t'); desc++);
-            *outptr++ = ' ';
-            outpos++;
-            continue;
-        }
-        else if(*desc=='"'||*desc=='\\'||*desc=='/') {
-            *outptr++ = '\\';
-            outpos++;
-            if(maxoutlen <= outpos)///
-                break;
-        }
+    if(desclen <= 0) return;
 
-        *outptr++ = *desc++;
-        outpos++;
+    int nc = 0;
+
+    for(int i = 0; desc[i] && i < desclen; i++)
+        if(desc[i] == '"' || desc[i] == '\\' || desc[i] == '/') nc++;
+
+    int written = (maxoutlen < desclen + nc)? maxoutlen: desclen + nc;
+    const char* ip = desc + desclen - 1;
+    char* op = outptr + written - 1;
+
+    for(; outptr <= op; ip--) {
+        *op-- = *ip;
+        if(op < outptr) break;
+        if(*ip == '"' || *ip == '\\' || *ip == '/') *op-- = '\\';
     }
 
-    if(maxoutlen <= outpos && 3 < maxoutlen) {
-        int i;
-        for(i=1; i<=3; i++) *(outptr-i) = '.';
-        for(; i <= outpos && *(outptr-i) == '\\'; i++) *(outptr-i) = '.';
+    if(maxoutlen < desclen + nc && 3 < maxoutlen) {
+        outptr[0] = outptr[1] = outptr[2] = '.';
+        for(int i = 3; i < maxoutlen && 
+           (outptr[i] == '"' || outptr[i] == '\\' || outptr[i] == '/'); i++)
+            outptr[i] = '.';
     }
+
+    outptr += written;
+    outpos += written;
 }
 
 #endif//__format_h__

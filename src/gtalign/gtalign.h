@@ -6,14 +6,14 @@
 #ifndef __gtalign_h__
 #define __gtalign_h__
 
-static const char*  version = "0.15.00";
+static const char*  version = "0.16.00";
 static const char*  verdate = "";
 
 static const char*  instructs = "\n\
 <> []\n\
 \n\
 GTalign, HPC protein structure alignment, superposition and search tool.\n\
-(C)2021-2023 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University\n\
+(C)2021-2025 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University\n\
 \n\
 \n\
 Usage (one of the two):\n\
@@ -97,6 +97,10 @@ Output control options (for search usage except --sort):\n\
                             produced alignments.\n\
 --referenced                Produce transformation matrices for reference\n\
                             structures instead of query(-ies).\n\
+--outfmt=<code>             Format of results:\n\
+                            0: Plain;\n\
+                            1: JSON.\n\
+                        Default=0\n\
 \n\
 Interpretation options:\n\
 --infmt=<code>              Format of input structures:\n\

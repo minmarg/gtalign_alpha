@@ -210,6 +210,9 @@ size_t CuMemoryBase::CalcMaxDbDataChunkSizeHelper(
     size_t tmpszovlpos, szovlpos = 0UL;//overall size of data excluding maxsizedbposs
     size_t tmpdiff;
 
+    //NOTE: align #positions for 32-bit memory alignment
+    totqrsposs = ALIGN_UP(totqrsposs, 4);
+
     //search space divided by #db structure positions;
     //note: assuming matrices of type float;
     //NOTE: score matrices is not used as they are computed on-the-fly,

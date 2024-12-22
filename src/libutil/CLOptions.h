@@ -44,9 +44,8 @@ enum TOSorting {
     osnOSortingTotal
 };
 enum TOOutputFormat {
-    oofFull,
-    oofAlignment,
-    oofTabular,
+    oofPlain,
+    oofJSON,
     oofnOOutputFormat
 };
 enum TIInputFormat {

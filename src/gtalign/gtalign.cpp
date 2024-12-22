@@ -596,10 +596,14 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         CLOPTASSIGN(O_NO_DELETIONS, no_deletions);
         CLOPTASSIGN(O_REFERENCED, referenced);
 
-        if( !outfmt.empty()) {
+        if(!outfmt.empty()) {
             if( mystring2int(c, outfmt, "Invalid argument of option --outfmt."))
                 return EXIT_FAILURE;
             CLOPTASSIGN(O_OUTFMT, c);
+            if(!clsdblst.empty() && CLOptions::GetO_OUTFMT() == CLOptions::oofJSON) {
+                error("JSON format is unavailable for clustering.");
+                return EXIT_FAILURE;
+            }
         }
 
 

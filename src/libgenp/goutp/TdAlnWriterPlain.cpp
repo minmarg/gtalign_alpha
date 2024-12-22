@@ -28,6 +28,7 @@ void TdAlnWriter::WriteResultsPlain()
     static const bool nodeletions = CLOptions::GetO_NO_DELETIONS();
     static const unsigned int indent = OUTPUTINDENT;
     // static const unsigned int annotlen = ANNOTATIONLEN;
+    const unsigned int rfnwidth = 106;
     const unsigned int dscwidth = MAX_DESCRIPTION_LENGTH;//no wrap (pathname)
     const unsigned int dsclen = (dscwidth>>1);//DEFAULT_DESCRIPTION_LENGTH;
     const unsigned int txtwidth = ANNOTATIONLEN;
@@ -57,7 +58,7 @@ void TdAlnWriter::WriteResultsPlain()
         preamb + "Failed to open file for writing: " + filename);
 
     left = szWriterBuffer;
-    size += WritePrognamePlain(pb, left/*maxsize*/, dscwidth);
+    size += WritePrognamePlain(pb, left/*maxsize*/, rfnwidth);
 
     left = szWriterBuffer - size;
     left = PCMIN(left, (int)dsclen);
@@ -312,7 +313,6 @@ int TdAlnWriter::WriteQueryDescriptionPlain(
 // indent, indentation length;
 // annotlen, annotation length;
 // found, whether any structures have been found;
-// return the number of bytes written;
 //
 void TdAlnWriter::WriteSearchInformationPlain( 
     FILE* fp,

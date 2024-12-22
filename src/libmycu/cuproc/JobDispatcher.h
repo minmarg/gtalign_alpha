@@ -79,10 +79,8 @@ public:
 
 protected:
     void CreateReader( 
-        int maxstrlen,
-        bool mapped,
-        int ndatbufs,
-        int nagents
+        int maxstrlen, bool mapped, int ndatbufs, int nagents,
+        size_t chunkdatasize, size_t chunkdatalen, size_t chunknstrs
     );
 
     void CreateQrsReader(

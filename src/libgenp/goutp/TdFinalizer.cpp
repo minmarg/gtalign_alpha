@@ -272,6 +272,7 @@ void TdFinalizer::FinalizeQueries()
 {
     MYMSG("TdFinalizer::FinalizeQueries", 3);
     static const std::string preamb = "TdFinalizer::FinalizeQueries: ";
+    static const int outfmt = CLOptions::GetO_OUTFMT();
 
     int i = 0;
     int nqystrs = cubp_set_nqystrs_;
@@ -310,9 +311,9 @@ void TdFinalizer::FinalizeQueries()
         qrynstrs_ = cubp_set_nstrs_[i];
         qrynposits_ = cubp_set_nposits_[i];
 
-//         if(outfmt==CLOptions::ofJSON)
-//             CompressResultsJSON();
-//         else
+        if(outfmt == CLOptions::oofJSON)
+            CompressResultsJSON();
+        else
             CompressResultsPlain();
 
         //results have been processed and the buffers are no longer needed;

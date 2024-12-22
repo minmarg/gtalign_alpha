@@ -45,7 +45,7 @@ CLDEFINEASSIGNMENT( O_NALNS, int, 2000, value>0 && value<1000000, --nalns);
 CLDEFINEASSIGNMENT( O_WRAP, int, 80, value>=40 && value<99999999, --wrap);
 CLDEFINEASSIGNMENT( O_NO_DELETIONS, int, 0, value==0 || value==1, --no-deletions);
 CLDEFINEASSIGNMENT( O_REFERENCED, int, 0, value==0 || value==1, --referenced);
-CLDEFINEASSIGNMENT( O_OUTFMT, int, 1, value>=0 && value<oofnOOutputFormat, --outfmt);
+CLDEFINEASSIGNMENT( O_OUTFMT, int, 0, value>=0 && value<oofnOOutputFormat, --outfmt);
 CLDEFINEASSIGNMENT( I_INFMT, int, 0, value>=0 && value<iifnIInputFormat, --infmt);
 CLDEFINEASSIGNMENT( I_ATOM_PROT, std::string, " CA ", 1, --atom);
 CLDEFINEASSIGNMENT( I_ATOM_RNA, std::string, " C3'", 1, --atom);

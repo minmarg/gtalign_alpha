@@ -1,3 +1,10 @@
+0.16, November 2024
+
+* JSON output format introduced
+* Reading database files skipped when the database has been cached with the -c option
+* Total number of query positions defined by the --dev-queries-total-length-per-chunk option aligned to 32 bits to avoid a memory alignment issue
+* Bug fix: a rare case of the master resetting a response flag set by a reader when caching is on
+
 0.15, May 2024
 
 * Introduction of the secondary TM-score, 2TM-score (--2tm-score)

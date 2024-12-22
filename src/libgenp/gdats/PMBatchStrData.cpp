@@ -542,8 +542,10 @@ size_t PMBatchStrData::Deserialize(
 
     std::ifstream fp(fname.c_str(), std::ios::binary);
 
-    if(!fp)
-        throw MYRUNTIME_ERROR(preamb + "Failed to open file: " + fname);
+    if(!fp) {
+        return 1;//eod
+        // throw MYRUNTIME_ERROR(preamb + "Failed to open file: " + fname);
+    }
 
     if(fp.rdbuf())
         fp.rdbuf()->pubsetbuf(tmpreadbuff_, PMBatchStrData_TMPBUFFSIZE);

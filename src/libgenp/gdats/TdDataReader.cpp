@@ -145,6 +145,59 @@ TdDataReader::~TdDataReader()
 }
 
 // -------------------------------------------------------------------------
+// GetDbsCacheFlag: check and return the flag of whether databases are cached;
+// nagents, number of reading agents;
+// cachedir, cache directory;
+// inputlist, database names;
+// chunkdatasize, chunkdatalen, chunknstrs, max total data size, length, and
+// number of structures in a chunk;
+//
+int TdDataReader::GetDbsCacheFlag(
+    int nagents, 
+    const char* cachedir,
+    const std::vector<std::string>& inputlist,
+    size_t chunkdatasize, size_t chunkdatalen, size_t chunknstrs)
+{
+    MYMSG("TdDataReader::GetDbsCacheFlag", 3);
+    static const std::string preamb = "TdDataReader::GetDbsCacheFlag: ";
+
+    if(!cachedir || strlen(cachedir) < 1)
+        return TdDataReader::tdrcheNoCaching;
+
+    std::string signfullfile = std::string(cachedir) + DIRSEPSTR + TdDataReader::signaturefile_;
+    std::string dbname;
+    std::for_each(inputlist.begin(), inputlist.end(),
+        [&dbname](const std::string& s){dbname += s;}
+    );
+    size_t dbnamelen = dbname.size();
+    size_t now = (size_t)time(NULL);
+
+    while(file_exists(signfullfile.c_str())) {
+        std::ifstream fp(signfullfile.c_str(), std::ios::binary);
+        if(!fp) break;
+        int nagentstmp;
+        size_t chunkdatasizetmp = 0, chunkdatalentmp = 0, chunknstrstmp = 0;
+        size_t dbnamelentmp = 0, nowt = 0;
+        fp.read(reinterpret_cast<char*>(&nowt), sizeof(nowt));
+        fp.read(reinterpret_cast<char*>(&nagentstmp), sizeof(nagentstmp));
+        fp.read(reinterpret_cast<char*>(&chunkdatasizetmp), sizeof(chunkdatasizetmp));
+        fp.read(reinterpret_cast<char*>(&chunkdatalentmp), sizeof(chunkdatalentmp));
+        fp.read(reinterpret_cast<char*>(&chunknstrstmp), sizeof(chunknstrstmp));
+        fp.read(reinterpret_cast<char*>(&dbnamelentmp), sizeof(dbnamelentmp));
+        if(now < nowt || (now - nowt) < 60 || nagents != nagentstmp ||
+           chunkdatasize != chunkdatasizetmp || chunkdatalen != chunkdatalentmp ||
+           chunknstrs != chunknstrstmp || dbnamelen != dbnamelentmp)
+            break;
+        std::string dbnametmp; dbnametmp.resize(dbnamelentmp);
+        fp.read(const_cast<char*>(dbnametmp.data()), dbnamelentmp);
+        if(!(dbname == dbnametmp)) break;
+        return TdDataReader::tdrcheReadCached;
+    }
+
+    return TdDataReader::tdrcheCacheAndRead;
+}
+
+// -------------------------------------------------------------------------
 // UpdateCacheFlag: update cache flag once
 //
 void TdDataReader::UpdateCacheFlag()
@@ -160,12 +213,6 @@ void TdDataReader::UpdateCacheFlag()
     }
 
     std::string signfullfile = std::string(cachedir_) + DIRSEPSTR + signaturefile_;
-    std::string dbname;
-    std::for_each(inputlist_.begin(), inputlist_.end(),
-        [&dbname](const std::string& s){dbname += s;}
-    );
-    size_t dbnamelen = dbname.size();
-    size_t now = (size_t)time(NULL);
 
     if(clustering_) {
         fgetnextdata = &TdDataReader::GetNextDataClustCache;
@@ -175,34 +222,23 @@ void TdDataReader::UpdateCacheFlag()
         return;
     }
 
-    while(file_exists(signfullfile.c_str())) {
-        std::ifstream fp(signfullfile.c_str(), std::ios::binary);
-        if(!fp) break;
-        int nagents;
-        size_t chunkdatasize = 0, chunkdatalen = 0, chunknstrs = 0;
-        size_t dbnamelentmp = 0, nowt = 0;
-        fp.read(reinterpret_cast<char*>(&nowt), sizeof(nowt));
-        fp.read(reinterpret_cast<char*>(&nagents), sizeof(nagents));
-        fp.read(reinterpret_cast<char*>(&chunkdatasize), sizeof(chunkdatasize));
-        fp.read(reinterpret_cast<char*>(&chunkdatalen), sizeof(chunkdatalen));
-        fp.read(reinterpret_cast<char*>(&chunknstrs), sizeof(chunknstrs));
-        fp.read(reinterpret_cast<char*>(&dbnamelentmp), sizeof(dbnamelentmp));
-        if(now < nowt || (now - nowt) < 60 || nagents_ != nagents ||
-           chunkdatasize_ != chunkdatasize || chunkdatalen_ != chunkdatalen ||
-           chunknstrs_ != chunknstrs || dbnamelen != dbnamelentmp)
-            break;
-        std::string dbnametmp; dbnametmp.resize(dbnamelentmp);
-        fp.read(const_cast<char*>(dbnametmp.data()), dbnamelentmp);
-        if(!(dbname == dbnametmp)) break;
-        cacheflag_ = tdrcheReadCached;
-        return;
-    }
+    cacheflag_ = TdDataReader::GetDbsCacheFlag(
+        nagents_, cachedir_, inputlist_,
+        chunkdatasize_, chunkdatalen_, chunknstrs_);
 
-    cacheflag_ = tdrcheCacheAndRead;
-
-    if(0 < ndxstartwith_) return;
+    if(cacheflag_ != tdrcheCacheAndRead) return;
 
     //only one thread writes a signature:
+    if(0 < ndxstartwith_) return;
+
+    std::string dbname;
+    std::for_each(inputlist_.begin(), inputlist_.end(),
+        [&dbname](const std::string& s){dbname += s;}
+    );
+    size_t dbnamelen = dbname.size();
+    size_t now = (size_t)time(NULL);
+
+    //prepare for constructing cache, write a signature:
     std::ofstream fp(signfullfile.c_str(), std::ios::binary);
     if(fp.bad() || fp.fail())
         throw MYRUNTIME_ERROR(
@@ -289,8 +325,11 @@ void TdDataReader::Execute( void* )
 
             cv_msg_.wait(lck_msg,
                 [this]{return 
-                    ((0 <= req_msg_ && req_msg_ <= tdrmsgTerminate) || 
-                    req_msg_ == TREADER_MSG_ERROR
+                    //NOTE: rsp_msg_ < 0 implies the master unset a response!
+                    //NOTE: this ensures continuous data delivery!
+                    ((0 <= req_msg_ && req_msg_ < tdrmsgTerminate && rsp_msg_ < 0) || 
+                     req_msg_ == tdrmsgTerminate ||
+                     req_msg_ == TREADER_MSG_ERROR
                     );}
             );
 

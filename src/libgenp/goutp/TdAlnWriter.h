@@ -213,6 +213,8 @@ public:
     static int WritePrognamePlain( char*& outptr, int maxsize, const int width );
     static void WriteCommandLinePlain(FILE* fp,
         char* const buffer, const int szbuffer, char*& outptr, int& offset);
+    static void WriteCommandLineJSON(FILE* fp,
+        char* const buffer, const int szbuffer, char*& outptr, int& offset);
     static void WriteSearchInformationPlain(FILE* fp,
         char* const buffer, const int szbuffer, char*& outptr, int& offset,
         char* tmpbuf, int sztmpbuf, 
@@ -245,9 +247,6 @@ protected:
     int WriteProgname( char*& outptr, int maxsize, const int width );
     int WriteQueryDescription(char*& outptr, int maxsize,
         const int qrylen, const char* desc, const int width );
-    int WriteSummary(char*& outptr,
-        const int qrylen, const size_t npossearched, const size_t nentries,
-        const int nqystrs, const double duration, const std::string&);
 
     void WriteResultsPlain();
     int WriteQueryDescriptionPlain(char*& outptr, int maxsize,
@@ -260,12 +259,15 @@ protected:
     int WritePrognameJSON( char*& outptr, int maxsize, const int width );
     int WriteQueryDescriptionJSON(char*& outptr, int maxsize,
         const int qrylen, const std::string& desc, const int width );
-    int WriteSearchInformationJSON(char*& outptr, int maxsize, 
+    void WriteSearchInformationJSON(FILE* fp,
+        char* const buffer, const int szbuffer, char*& outptr, int& offset,
+        char* tmpbuf, int /* sztmpbuf */,
         const std::vector<std::string>& rfilelist,
         const size_t npossearched, const size_t nentries,
-        const float tmsthrld, const int indent, const int annotlen, const bool found );
+        const float tmsthld, const bool found);
     int WriteSummaryJSON(char*& outptr,
-        const int qrylen, const size_t npossearched, const size_t nentries);
+        const int qrylen, const size_t npossearched, const size_t /* nentries */,
+        const int nqystrs, const double duration, std::string devname);
 
     int GetTotalNumberOfRecords() const
     {
@@ -363,12 +365,12 @@ private:
 inline
 void TdAlnWriter::WriteResults()
 {
-//     const int outfmt = CLOptions::GetB_FMT();
+    static const int outfmt = CLOptions::GetO_OUTFMT();
 
-//     if(outfmt==CLOptions::ofJSON) {
-//         WriteResultsJSON();
-//         return;
-//     }
+    if(outfmt == CLOptions::oofJSON) {
+        WriteResultsJSON();
+        return;
+    }
 
     WriteResultsPlain();
     return;
@@ -379,10 +381,10 @@ void TdAlnWriter::WriteResults()
 inline
 int TdAlnWriter::WriteProgname( char*& outptr, int maxsize, const int width )
 {
-//     const int outfmt = CLOptions::GetB_FMT();
+    static const int outfmt = CLOptions::GetO_OUTFMT();
 
-//     if(outfmt==CLOptions::ofJSON)
-//         return WritePrognameJSON(outptr, maxsize, width);
+    if(outfmt == CLOptions::oofJSON)
+        return WritePrognameJSON(outptr, maxsize, width);
 
     return WritePrognamePlain(outptr, maxsize, width);
 }
@@ -394,10 +396,10 @@ int TdAlnWriter::WriteQueryDescription(
     char*& outptr, int maxsize,
     const int qrylen, const char* desc, const int width)
 {
-//     const int outfmt = CLOptions::GetB_FMT();
+    static const int outfmt = CLOptions::GetO_OUTFMT();
 
-//     if(outfmt==CLOptions::ofJSON)
-//         return WriteQueryDescriptionJSON(outptr, maxsize, qrylen, desc, width);
+    if(outfmt == CLOptions::oofJSON)
+        return WriteQueryDescriptionJSON(outptr, maxsize, qrylen, desc, width);
 
     return 
         WriteQueryDescriptionPlain(
@@ -405,23 +407,4 @@ int TdAlnWriter::WriteQueryDescription(
 }
 
 // -------------------------------------------------------------------------
-//
-inline
-int TdAlnWriter::WriteSummary(
-    char*& outptr,
-    const int qrylen, const size_t npossearched, const size_t nentries,
-    const int nqystrs, const double duration, const std::string& devname)
-{
-//     const int outfmt = CLOptions::GetB_FMT();
-
-//     if(outfmt==CLOptions::ofJSON)
-//         return 
-//             WriteSummaryJSON(
-//                 outptr, qrylen, npossearched, nentries);
-
-    return 
-        WriteSummaryPlain(
-            outptr, qrylen, npossearched, nentries, nqystrs, duration, devname);
-}
-
 #endif//__TdAlnWriter_h__

@@ -13,6 +13,7 @@
 #include <vector>
 #include <memory>
 
+#include "libutil/templates.h"
 #include "libutil/CLOptions.h"
 #include "libutil/format.h"
 #include "TdAlnWriter.h"
@@ -24,10 +25,10 @@ void TdAlnWriter::WriteResultsJSON()
 {
     MYMSG("TdAlnWriter::WriteResultsJSON", 4);
     static const std::string preamb = "TdAlnWriter::WriteResultsJSON: ";
-    static const unsigned int indent = OUTPUTINDENT;
-    static const unsigned int annotlen = ANNOTATIONLEN;
-    const unsigned int dsclen = DEFAULT_DESCRIPTION_LENGTH;
+    // static const bool nodeletions = CLOptions::GetO_NO_DELETIONS();
+    // static const unsigned int annotlen = ANNOTATIONLEN;
     const unsigned int dscwidth = MAX_DESCRIPTION_LENGTH;
+    const unsigned int dsclen = DEFAULT_DESCRIPTION_LENGTH;
     const size_t nhits = CLOptions::GetO_NHITS();
     const size_t nalns = CLOptions::GetO_NALNS();
     std::string filename;
@@ -57,25 +58,28 @@ void TdAlnWriter::WriteResultsJSON()
     size += WritePrognameJSON(pb, left/*maxsize*/, dscwidth);
 
     left = szWriterBuffer - size;
-    left = PCMIN(left, (int)dsclen);
+    left = mymin(left, (int)dsclen);
 
-    size += 
-        WriteQueryDescriptionJSON(
-            pb, left/*maxsize*/,
-            vec_nqyposs_[qrysernr_], vec_qrydesc_[qrysernr_], dscwidth);
-
-    bool hitsfound = p_finalindxs_ != NULL && p_finalindxs_->size()>0;
+    WriteCommandLineJSON(fp.get(),
+        buffer_, szWriterBuffer, pb, size);
 
     written = 
-        WriteSearchInformationJSON(
+        WriteQueryDescriptionJSON(
             ptmp, szWriterBuffer/*maxsize*/,
-            mstr_set_rfilelist_,
-            vec_nposschd_[qrysernr_], vec_nentries_[qrysernr_],
-            vec_tmsthld_[qrysernr_], indent, annotlen, hitsfound);
+            vec_nqyposs_[qrysernr_], vec_qrydesc_[qrysernr_], dscwidth);
 
     BufferData(fp.get(),
         buffer_, szWriterBuffer, pb, size,
         srchinfo, written);
+
+    bool hitsfound = p_finalindxs_ != NULL && p_finalindxs_->size()>0;
+
+    WriteSearchInformationJSON(fp.get(),
+        buffer_, szWriterBuffer, pb, size,
+        ptmp, szWriterBuffer/*maxsize*/,
+        mstr_set_rfilelist_,
+        vec_nposschd_[qrysernr_], vec_nentries_[qrysernr_],
+        vec_tmsthld_[qrysernr_], hitsfound);
 
     written = sprintf(srchinfo,"  \"search_summary\": [%s",NL);
     BufferData(fp.get(),
@@ -118,7 +122,7 @@ void TdAlnWriter::WriteResultsJSON()
                 (*vec_alnptrs_[qrysernr_][allsrtvecs_[ (*p_finalindxs_)[i] ]])
                                         [allsrtindxs_[ (*p_finalindxs_)[i] ]];
             int alnlen = (int)strlen(aln);
-            bool last = !(i+1 < p_finalindxs_->size() && i+1 < nhits);
+            bool last = !(i+1 < p_finalindxs_->size() && i+1 < nalns);
             BufferData(fp.get(),
                 buffer_, szWriterBuffer, pb, size,
                 aln, alnlen);
@@ -137,8 +141,9 @@ void TdAlnWriter::WriteResultsJSON()
 
     written = 
         WriteSummaryJSON(ptmp,
-            vec_nqyposs_[qrysernr_],
-            vec_nposschd_[qrysernr_], vec_nentries_[qrysernr_]);
+            vec_nqyposs_[qrysernr_], vec_nposschd_[qrysernr_],
+            vec_nentries_[qrysernr_], vec_nqystrs_[qrysernr_],
+            vec_duration_[qrysernr_], vec_devname_[qrysernr_]);
 
     BufferData(fp.get(),
         buffer_, szWriterBuffer, pb, size,
@@ -165,11 +170,18 @@ int TdAlnWriter::WritePrognameJSON(char*& outptr, int maxsize, const int /*width
     int size = 0;
 
     written = sprintf(outptr,
-            "{\"structure_search\": {%s"
+            "{\"gtalign_search\": {%s"
             "  \"program\": \"%s\",%s"
-            "  \"version\": \"%s\",%s",
+            "  \"version\": \"%s\",%s"
+            "  \"search_date\": \"",
             NL,PROGNAME? PROGNAME: "",
             NL,PROGVERSION? PROGVERSION: "",NL);
+    outptr += written;
+    size += written;
+    written = getdtime(outptr, mymin(40, maxsize - size));
+    outptr += written;
+    size += written;
+    written = sprintf(outptr,"\",%s",NL);
     outptr += written;
     size += written;
 
@@ -209,6 +221,51 @@ int TdAlnWriter::WritePrognameJSON(char*& outptr, int maxsize, const int /*width
 }
 
 // -------------------------------------------------------------------------
+// WriteCommandLineJSON: write the command line in JSON format;
+// fp, file pointer;
+// buffer, buffer to store data in;
+// szbuffer, size of the buffer;
+// outptr, varying address of the pointer pointing to a location in the buffer;
+// offset, outptr offset from the beginning of the buffer (fill size);
+//
+void TdAlnWriter::WriteCommandLineJSON(
+    FILE* fp,
+    char* const buffer, const int szbuffer, char*& outptr, int& offset)
+{
+    if(!__PARGC__ || !__PARGV__ || !*__PARGV__) return;
+
+    static const char* cmdline = "  \"command_line\": \"";
+    static const int lencmdline = (int)strlen(cmdline);
+    static const int sznl = (int)strlen(NL);
+    std::string::size_type n;
+    std::string tmpstr;
+    tmpstr.reserve(KBYTE);
+
+    BufferData(fp,
+        buffer, szbuffer, outptr, offset,
+        cmdline, lencmdline);
+
+    for(int i = 0; i < *__PARGC__; i++) {
+        if((*__PARGV__)[i] == NULL) continue;
+        tmpstr = (*__PARGV__)[i];
+        for(n = 0; (n = tmpstr.find('\\', n)) != std::string::npos; n += 2) tmpstr.insert(n, 1, '\\');
+        for(n = 0; (n = tmpstr.find('/', n)) != std::string::npos; n += 2) tmpstr.insert(n, 1, '\\');
+        for(n = 0; (n = tmpstr.find('"', n)) != std::string::npos; n += 2) tmpstr.insert(n, 1, '\\');
+        BufferData(fp,
+            buffer, szbuffer, outptr, offset,
+            tmpstr.c_str(), tmpstr.size());
+        if(i+1 < *__PARGC__)
+            BufferData(fp,
+                buffer, szbuffer, outptr, offset,
+                " ", 1);
+    }
+
+    BufferData(fp,
+        buffer, szbuffer, outptr, offset,
+        "\"," NL, 2 + sznl);
+}
+
+// -------------------------------------------------------------------------
 // WriteQueryDescriptionJSON: write query description in JSON format;
 // outptr, address of the buffer to write;
 // maxsize, maximum allowed number of bytes to write;
@@ -225,36 +282,25 @@ int TdAlnWriter::WriteQueryDescriptionJSON(
     const int /*width*/)
 {
     int written;
-    int size = 0;
+    int size = 0, outpos = 0;
 
-    if(maxsize < 60)
+    if(maxsize < 128)
         return size;
 
     written = sprintf(outptr,
             "  \"query\": {%s"
-            "    \"length\": %d,%s",
+            "    \"length\": %d,%s"
+            "    \"description\": \"",
             NL,qrylen,NL);
     outptr += written;
     size += written;
 
-    //subtract BUF_MAX for accounting for the two fields preceding description
-    maxsize -= size + BUF_MAX;
+    maxsize -= size + 16/*ending*/;
 
-    if( maxsize < 1 )
-        return size;
-
-    char* p = outptr;
-    int outpos = 0;
-
-    written = sprintf(outptr,"    \"entity\": \"");
-    outptr += written;
-    outpos += written;
-    FormatDescriptionJSON(outptr, desc.c_str(), maxsize, outpos);
+    FormatDescriptionJSON(outptr, desc.c_str(), desc.size(), maxsize, outpos);
+    size += outpos;
     written = sprintf(outptr,"\"%s  },%s",NL,NL);
     outptr += written;
-    outpos += written;
-
-    written = (int)(outptr - p);
     size += written;
 
     return size;
@@ -262,102 +308,90 @@ int TdAlnWriter::WriteQueryDescriptionJSON(
 
 // -------------------------------------------------------------------------
 // WriteSearchInformationJSON: write search information in JSON format;
-// outptr, address of the buffer to write;
-// maxsize, maximum allowed number of bytes to write;
+// fp, file pointer;
+// buffer, buffer to store data in;
+// szbuffer, size of the buffer;
+// outptr, varying address of the pointer pointing to a location in the buffer;
+// offset, outptr offset from the beginning of the buffer (fill size);
+// tmpbuf, address of a temporary buffer for writing;
+// sztmpbuf, size of tmpbuf;
 // rfilelist, list of filenames/dirnames searched;
 // npossearched, total number of positions searched;
 // nentries, total number of structures searched;
 // tmsthld, TM-score threshold;
-// found, whether any profiles have been found;
-// return the number of bytes written;
+// found, whether any structures have been found;
 //
-int TdAlnWriter::WriteSearchInformationJSON( 
-    char*& outptr,
-    int maxsize,
+void TdAlnWriter::WriteSearchInformationJSON( 
+    FILE* fp,
+    char* const buffer, const int szbuffer, char*& outptr, int& offset,
+    char* tmpbuf, int /* sztmpbuf */,
     const std::vector<std::string>& rfilelist,
     const size_t npossearched,
     const size_t nentries,
     const float tmsthld,
-    const int /*indent*/,
-    const int /*annotlen*/,
-    const bool found )
+    const bool found)
 {
+    static const int nalns = CLOptions::GetO_NALNS();
+    static const bool nodeletions = CLOptions::GetO_NO_DELETIONS();
+    static const float seqsimthrscore = CLOptions::GetP_PRE_SIMILARITY();
+    static const float prescore = CLOptions::GetP_PRE_SCORE();
+    static const bool prescron = seqsimthrscore || prescore;
     static const size_t maxszname = MAX_FILENAME_LENGTH_TOSHOW;
-    static const int envlpines = 7;//number of lines wrapping filenames
-    static const int headlines = 4;//number of lines for information
-    static const int maxfieldlen = 40;//JSON max field length
-    static const int maxlinelen = 90;//maximum length of other lines
-    int written, size = 0;
-    const char* dots = "      \"...\"" NL;
-    //const int szdots = (int)strlen(dots);
+    int written;
 
-    std::function<bool(int)> lfn = 
-        [&maxsize](int szdelta) {
-            maxsize -= szdelta;
-            return(maxsize < 1);
-        };
-
-    if(lfn(maxfieldlen*envlpines))
-        //7, minimum database section lines (including 1 name or dots)
-        return size;
-
-    written = sprintf(outptr,
+    written = sprintf(tmpbuf,
             "  \"database\": {%s"
             "    \"entries\": [%s",NL,NL);
-    outptr += written;
-    size += written;
+    BufferData(fp,
+        buffer, szbuffer, outptr, offset,
+        tmpbuf, written);
 
     //print filenames
     //for(const std::string& fname: rfilelist) {
     for(size_t i = 0; i < rfilelist.size(); i++) {
         int outpos = 0;
-        size_t szname = rfilelist[i].size();
-        if(maxszname < szname)
-            szname = maxszname;
-        if(lfn((int)(szname+15))) {
-            written = sprintf(outptr,"%s",dots);
-            outptr += written;
-            size += written;
-            break;
-        }
-        written = sprintf(outptr,"      \"");
-        outptr += written;
-        size += written;
-        FormatDescriptionJSON(outptr, rfilelist[i].c_str(), szname, outpos);
-        size += outpos;
+        int szname = (int)rfilelist[i].size();
+        written = sprintf(tmpbuf,"      \"");
+        BufferData(fp,
+            buffer, szbuffer, outptr, offset,
+            tmpbuf, written);
+        char* p = tmpbuf;
+        FormatDescriptionJSON(p, rfilelist[i].c_str(), szname, maxszname, outpos);
+        BufferData(fp,
+            buffer, szbuffer, outptr, offset,
+            tmpbuf, outpos);
         written = (i+1 < rfilelist.size())? 
-            sprintf(outptr,"\",%s",NL): sprintf(outptr,"\"%s",NL);
-        outptr += written;
-        size += written;
+            sprintf(tmpbuf,"\",%s",NL): sprintf(tmpbuf,"\"%s",NL);
+        BufferData(fp,
+            buffer, szbuffer, outptr, offset,
+            tmpbuf, written);
     }
 
-    written = sprintf(outptr,
+    written = sprintf(tmpbuf,
             "    ],%s"
             "    \"number_of_structures\": %zu,%s"
             "    \"number_of_positions\": %zu%s"
             "  },%s",
             NL,nentries,NL,npossearched,NL,NL);
-    outptr += written;
-    size += written;
-
-    if(lfn(maxlinelen*headlines))
-        return size;
+    BufferData(fp,
+        buffer, szbuffer, outptr, offset,
+        tmpbuf, written);
 
     if(found) {
-        written = sprintf(outptr,
-            "  \"message\": \"Structures found above the TM-score threshold:\",%s",NL);
-        outptr += written;
-        size += written;
-    }
-    else {
-        written = sprintf(outptr,
-            "  \"message\": \"No structures found above a TM-score threshold of %g\",%s",
-            tmsthld,NL);
-        outptr += written;
-        size += written;
-    }
-
-    return size;
+        if(nodeletions && nalns)
+            written = sprintf(tmpbuf,
+                "  \"message\": \"NOTE: "
+                "ALIGNMENTS with DELETION POSITIONS (gaps in query) REMOVED\",%s",NL);
+        else
+            written = sprintf(tmpbuf,
+                "  \"message\": \"\",%s",NL);
+    } else
+        written = sprintf(tmpbuf,
+            "  \"message\": \"No structures found above a TM-score threshold of %g.%s\",%s",
+            tmsthld,(prescron? " (Pre-screening on!)":""),NL);
+    BufferData(fp,
+        buffer, szbuffer, outptr, offset,
+        tmpbuf, written);
 }
 
 // -------------------------------------------------------------------------
@@ -366,25 +400,42 @@ int TdAlnWriter::WriteSearchInformationJSON(
 // qrylen, query length;
 // npossearched, total positions searched;
 // nentries, total number of structures searched;
+// duration, accumulated duration for a query batch;
+// devname, device name;
 // return the number of bytes written;
 //
 int TdAlnWriter::WriteSummaryJSON( 
     char*& outptr,
     const int qrylen,
     const size_t npossearched,
-    const size_t nentries)
+    const size_t /* nentries */,
+    const int nqystrs,
+    const double duration,
+    std::string devname)
 {
     int written;
     int size = 0;
+    std::string::size_type n;
+    std::chrono::high_resolution_clock::time_point tnow = 
+    std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elpsd = tnow - gtSTART;
+
+    for(n = 0; (n = devname.find('\\', n)) != std::string::npos; n += 2) devname.insert(n, 1, '\\');
+    for(n = 0; (n = devname.find('/', n)) != std::string::npos; n += 2) devname.insert(n, 1, '\\');
+    for(n = 0; (n = devname.find('"', n)) != std::string::npos; n += 2) devname.insert(n, 1, '\\');
 
     written = sprintf(outptr,
             "  \"search_statistics\": {%s"
             "    \"query_length\": %d,%s"
-            "    \"database_size\": %zu,%s"
-            "    \"search_space\": %zu%s"
+            "    \"total_database_length\": %zu,%s"
+            "    \"search_space\": %zu,%s"
+            "    \"time_elapsed_from_process_initiation\": %.6f,%s"
+            "    \"query_batch_execution_time\": %.6f,%s"
+            "    \"query_batch_size\": %d,%s"
+            "    \"device\": \"%s\"%s"
             "  }%s}}%s",
-            NL,qrylen,NL,npossearched,NL,
-            npossearched * nentries,NL,NL,NL);
+            NL,qrylen,NL,npossearched,NL,qrylen * npossearched,NL,
+            elpsd.count(),NL,duration,NL,nqystrs,NL,devname.c_str(),NL,NL,NL);
     outptr += written;
     size += written;
 
