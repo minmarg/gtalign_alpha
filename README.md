@@ -83,9 +83,9 @@ superposition and search method (with flexible structure clustering ability)
 
   `MS_Windows10_installer_GPU/GTalign-win64-installer.msi`
 
-## Installing Conda packages on Linux and macOS
+## Installing Conda packages on Linux
 
-  To install the multiprocessing version (CPU) of GTalign on Linux and macOS, run:
+  To install the multiprocessing version (CPU) of GTalign on Linux, run:
 
   `conda install minmarg::gtalign_mp`
 
