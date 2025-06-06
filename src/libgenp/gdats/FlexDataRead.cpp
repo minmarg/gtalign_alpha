@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <assert.h>
 
+#include <cctype>
 #include <string>
 #include <vector>
 #include <memory>
@@ -377,6 +378,7 @@ bool FlexDataRead::ReadDataPDB(
             NextDataPage();
 
         if(profile_buffer_.datlen_ < profile_buffer_.curpos_) {
+            bsd.Fallback();
             lfSetEof(false);
             throw MYRUNTIME_ERROR2(
             preamb + "Invalid file buffer's position.", 
@@ -455,6 +457,7 @@ bool FlexDataRead::ReadDataPDB(
             coords[1] = std::stof(strcoord_.assign(p+38, 8));//residue coordinates
             coords[2] = std::stof(strcoord_.assign(p+46, 8));//residue coordinates
         } catch(...) {
+            bsd.Fallback();
             lfSetEof(false);
             throw MYRUNTIME_ERROR(preamb + "Failed to read residue data from PDB file.");
         }
@@ -591,9 +594,9 @@ bool FlexDataRead::ReadDataCIF(
         else if(dw >= 13 && memcmp(p,"label_asym_id",13) == 0) fieldndxs_[label_asym_id] = ndx;
         else if(dw >= 12 && memcmp(p,"label_seq_id",12) == 0) fieldndxs_[label_seq_id] = ndx;
         else if(dw >= 17 && memcmp(p,"pdbx_PDB_ins_code",17) == 0) fieldndxs_[pdbx_PDB_ins_code] = ndx;
-        else if(dw >= 7 && memcmp(p,"Cartn_x",7) == 0) fieldndxs_[Cartn_x] = ndx;
-        else if(dw >= 7 && memcmp(p,"Cartn_y",7) == 0) fieldndxs_[Cartn_y] = ndx;
-        else if(dw >= 7 && memcmp(p,"Cartn_z",7) == 0) fieldndxs_[Cartn_z] = ndx;
+        else if(dw >= 7 && memcmp(p,"Cartn_x",7) == 0 && std::isspace(p[7])) fieldndxs_[Cartn_x] = ndx;
+        else if(dw >= 7 && memcmp(p,"Cartn_y",7) == 0 && std::isspace(p[7])) fieldndxs_[Cartn_y] = ndx;
+        else if(dw >= 7 && memcmp(p,"Cartn_z",7) == 0 && std::isspace(p[7])) fieldndxs_[Cartn_z] = ndx;
         else if(dw >= 11 && memcmp(p,"auth_seq_id",11) == 0) fieldndxs_[auth_seq_id] = ndx;
         else if(dw >= 12 && memcmp(p,"auth_asym_id",12) == 0) fieldndxs_[auth_asym_id] = ndx;
         else if(dw >= 18 && memcmp(p,"pdbx_PDB_model_num",18) == 0) fieldndxs_[pdbx_PDB_model_num] = ndx;
@@ -678,6 +681,7 @@ bool FlexDataRead::ReadDataCIF(
             NextDataPage();
 
         if(profile_buffer_.datlen_ < profile_buffer_.curpos_) {
+            bsd.Fallback();
             lfSetEof(false);
             throw MYRUNTIME_ERROR2(
             preamb + "Invalid file buffer's position.", 
@@ -782,8 +786,11 @@ bool FlexDataRead::ReadDataCIF(
             flndx = auth_asym_id;
 
         size_t sztk = (size_t)(ptkends_[fieldndxs_[flndx]]-ptks_[fieldndxs_[flndx]]);
-        if(sztk < 1)
+        if(sztk < 1) {
+            bsd.Fallback();
+            lfSetEof(false);
             throw MYRUNTIME_ERROR(preamb + "Invalid PDBx/mmCIF file format.");
+        }
 
         strchain_.assign(ptks_[fieldndxs_[flndx]], sztk);
         chid = strchain_[0];//chain id
@@ -812,6 +819,7 @@ bool FlexDataRead::ReadDataCIF(
             coords[2] = std::stof(strcoord_.assign(ptks_[fieldndxs_[Cartn_z]],
                 (size_t)(ptkends_[fieldndxs_[Cartn_z]]-ptks_[fieldndxs_[Cartn_z]])));
         } catch(...) {
+            bsd.Fallback();
             lfSetEof(false);
             throw MYRUNTIME_ERROR(preamb +
                 "Failed to read residue data from PDBx/mmCIF file.");

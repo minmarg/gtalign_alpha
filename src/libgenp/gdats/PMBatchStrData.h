@@ -84,6 +84,8 @@ public:
     void Serialize(const std::string&, const size_t nagents, const size_t eod) const;
     size_t Deserialize(const std::string&, const size_t nagents);
 
+    void Fallback() {FallbackOvhdPtrs();}
+
     //sort by length; used when all chunk data has been compiled
     void Sort();
 

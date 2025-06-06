@@ -2,10 +2,12 @@
 [![DOI](https://zenodo.org/badge/590487846.svg)](https://zenodo.org/doi/10.5281/zenodo.10433419)
 ![Header image](imgs/gtalign_header.jpg)
 
-# GTalign (alpha release)
+# GTalign
 
 GTalign, a novel high-performance (HPC) protein structure alignment, 
-superposition and search method (with flexible structure clustering ability)
+superposition and search method (with structure clustering ability)
+
+**You can also access GTalign through a [web service](https://github.com/minmarg/gtalign-web-backend)**
 
 ## Features
 
@@ -119,6 +121,8 @@ superposition and search method (with flexible structure clustering ability)
   using GCC or LLVM/Clang compilers (takes several minutes to compile):
 
   `BUILD_and_INSTALL__GPU__unix.sh`
+
+  `BUILD_and_INSTALL__GPU__unix__Hopper.sh` (Hopper architecture such as H100)
 
   `BUILD_and_INSTALL__GPU__unix__clang.sh`
 

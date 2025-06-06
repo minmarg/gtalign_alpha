@@ -1171,7 +1171,10 @@ void CalcScoresUnrl_SWFTscanProgressive(
             }
 
             __syncthreads();
-        }
+        }//for(;pos00 + p < dbstrlen;)
+
+        //NOTE: sync required as all qnx's in the last loop may be negative!
+        __syncthreads();
     }
 
     //find max score over all query positions:

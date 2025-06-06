@@ -1,3 +1,8 @@
+0.17, June 2025
+
+* Improved interpretation of the mmCIF format
+* Additional synchronization added to a kernel to handle an extremely rare but plausible scenario
+
 0.16, November 2024
 
 * JSON output format introduced

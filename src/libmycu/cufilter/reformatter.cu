@@ -208,8 +208,8 @@ __global__ void ReformatStructureDataPartStore(
         ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+2) * maxndbCposs))[newaddr + pos] = coord2;
         ((LNTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[newaddr + pos] = icho;
         ((INTYPE*)(tmpdpdiagbuffers + pmv2DResNumber * maxndbCposs))[newaddr + pos] = rnum;
-        ((CHTYPE*)(tmpdpdiagbuffers + pmv2Drsd * maxndbCposs))[newaddr + pos] = rsd;
-        ((CHTYPE*)(tmpdpdiagbuffers + pmv2Dss * maxndbCposs))[newaddr + pos] = ssa;
+        ((INTYPE*)(tmpdpdiagbuffers + pmv2Drsd * maxndbCposs))[newaddr + pos] = rsd;//NOTE INTYPE
+        ((INTYPE*)(tmpdpdiagbuffers + pmv2Dss * maxndbCposs))[newaddr + pos] = ssa;//NOTE INTYPE
     }
 
     //read and write position-specific fields of 3D index:
@@ -323,8 +323,8 @@ __global__ void ReformatStructureDataPartLoad(
         FPTYPE coord2 = ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+2) * maxndbCposs))[dbstrdst + pos];
         LNTYPE icho = ((LNTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[dbstrdst + pos];
         INTYPE rnum = ((INTYPE*)(tmpdpdiagbuffers + pmv2DResNumber * maxndbCposs))[dbstrdst + pos];
-        CHTYPE rsd = ((CHTYPE*)(tmpdpdiagbuffers + pmv2Drsd * maxndbCposs))[dbstrdst + pos];
-        CHTYPE ssa = ((CHTYPE*)(tmpdpdiagbuffers + pmv2Dss * maxndbCposs))[dbstrdst + pos];
+        CHTYPE rsd = ((INTYPE*)(tmpdpdiagbuffers + pmv2Drsd * maxndbCposs))[dbstrdst + pos];//NOTE INTYPE
+        CHTYPE ssa = ((INTYPE*)(tmpdpdiagbuffers + pmv2Dss * maxndbCposs))[dbstrdst + pos];//NOTE INTYPE
         SetDbStrField<FPTYPE,pmv2DCoords+0>(dbstrdst + pos, coord0);
         SetDbStrField<FPTYPE,pmv2DCoords+1>(dbstrdst + pos, coord1);
         SetDbStrField<FPTYPE,pmv2DCoords+2>(dbstrdst + pos, coord2);
