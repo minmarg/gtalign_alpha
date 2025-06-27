@@ -145,7 +145,8 @@ void JobDispatcher::CreateReader(
                 chunkdatasize, chunkdatalen, chunknstrs);
 
     if(cacheflag != TdDataReader::tdrcheReadCached) {
-        references->ConstructFileList();
+        //NOTE: queries are always constructed initially!
+        if(references != queries_.get()) references->ConstructFileList();
         nthreads = mymin(cputhsread, references->GetStrFilelist().size());
     }
 

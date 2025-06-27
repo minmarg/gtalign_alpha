@@ -1,6 +1,6 @@
 ```
 
-gtalign 0.16.00 (compiled with GPU support)
+gtalign 0.18.00 (compiled with GPU support)
 
 GTalign, HPC protein structure alignment, superposition and search tool.
 (C)2021-2025 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University

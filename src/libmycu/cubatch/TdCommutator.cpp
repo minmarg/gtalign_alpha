@@ -157,6 +157,8 @@ void TdCommutator::Execute( void* )
             rsp_msg_ = THREAD_MSG_ERROR;
             int rspmsg = rsp_msg_;
 
+            cbpc.CheckFinalizer();
+
             //immediately read the master-set data
             switch(reqmsg) {
                 case tthreadmsgGetDataChunkSize:

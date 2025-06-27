@@ -6,7 +6,7 @@
 #ifndef __gtalign_h__
 #define __gtalign_h__
 
-static const char*  version = "0.17.00";
+static const char*  version = "0.18.00";
 static const char*  verdate = "";
 
 static const char*  instructs = "\n\

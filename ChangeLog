@@ -1,3 +1,7 @@
+0.18, June 2025
+
+* File reading issue for clustering fixed when caching is disabled
+
 0.17, June 2025
 
 * Improved interpretation of the mmCIF format

@@ -84,6 +84,12 @@ public:
         TSCounterVar* cnt
     );
 
+    void CheckFinalizer() {
+        int rspcode = cbpfin_->GetResponse();
+        if(rspcode == CUBPTHREAD_MSG_ERROR)
+            throw MYRUNTIME_ERROR("CuBatch: Finalizer terminated with errors.");
+    }
+
     void WaitForIdleChilds() {
         if(cbpfin_)
             std::lock_guard<std::mutex> lck(cbpfin_->GetPrivateMutex());

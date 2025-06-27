@@ -783,9 +783,7 @@ void CuBatch::TransferResultsFromDevice(
         throw MYRUNTIME_ERROR(preamb + "Null finalizer object.");
 #endif
 
-    int rspcode = cbpfin_->GetResponse();
-    if(rspcode == CUBPTHREAD_MSG_ERROR)
-        throw MYRUNTIME_ERROR(preamb + "Finalizer terminated with errors.");
+    CheckFinalizer();
 
     //allocate memory if the required size has increased
     if(sz_mem_results_ < szresults) {
