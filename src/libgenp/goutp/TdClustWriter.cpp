@@ -656,6 +656,9 @@ std::string TdClustWriter::GetIdFromDesc(const std::string& desc) const
         qid = qid.substr(0,pos);
     }
 
+    if((pos = qid.find(':')) != std::string::npos && (pos + 1) < qid.size())
+        qid = qid.substr(pos + 1);
+
     if((pos = qid.find('.')) != std::string::npos && 4 <= pos)
         qid = qid.substr(0,pos);
     else if((pos = qid.rfind('.')) != std::string::npos && qid.size()-pos <= 4)
