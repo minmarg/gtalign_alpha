@@ -1,3 +1,7 @@
+0.19, August 2025
+
+* Structure IDs generated from clustering a tar archive corrected
+
 0.18, June 2025
 
 * File reading issue for clustering fixed when caching is disabled
