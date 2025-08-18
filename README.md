@@ -9,7 +9,7 @@ superposition and search method (with structure clustering ability)
 
 **You can also access GTalign through a [web service](https://github.com/minmarg/gtalign-web-backend)**
 
-**(Use [GTcomplex](https://github.com/minmarg/gtcomplex) to search and align macromolecular complexes)**
+**($\mathbb{\color{red}{NEW!}}$ Use [GTcomplex](https://github.com/minmarg/gtcomplex) to search and align macromolecular complexes)**
 
 ## Features
 
