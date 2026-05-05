@@ -530,7 +530,8 @@ void CuBatch::ProcessBlock(
             cusecstr::calc_secstr(
                 streamproc,
                 nqystrs, ndbCstrs1, nqyposs, ndbCposs1,
-                qystr1len, dbstr1len1, qystrnlen, dbstrnlen1, dbxpad1
+                qystr1len, dbstr1len1, qystrnlen, dbstrnlen1, dbxpad1,
+                tmpdpdiagbuffers
             );
 
         //run the first stage for finding transformation matrices
@@ -581,7 +582,7 @@ void CuBatch::ProcessBlock(
         //reset best scores and convergence flags;
         if(addsearchbyss && ndbCstrs2 && ndbCposs2) {
             //convergence is checked during refinement;
-            InitScores<INITOPT_BEST|INITOPT_CONVFLAG_ALL>
+            InitScores<INITOPT_BEST|INITOPT_CONVFLAG_FRAGREF|INITOPT_CONVFLAG_SCOREDP|INITOPT_CONVFLAG_NOTMPRG>
                 <<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
                     ndbCstrs2,  maxnsteps, 0/*minfraglen(unused)*/, false/*checkfragos*/,
                     auxwrkmemory);
@@ -602,7 +603,7 @@ void CuBatch::ProcessBlock(
 
         //reset best scores and convergence flags;
         if(ndbCstrs2 && ndbCposs2)
-            InitScores<INITOPT_BEST|INITOPT_CONVFLAG_ALL>
+            InitScores<INITOPT_BEST|INITOPT_CONVFLAG_FRAGREF|INITOPT_CONVFLAG_SCOREDP|INITOPT_CONVFLAG_NOTMPRG>
                 <<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
                     ndbCstrs2,  maxnsteps, 0/*minfraglen(unused)*/, false/*checkfragos*/,
                     auxwrkmemory);

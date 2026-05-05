@@ -76,8 +76,8 @@ void InitCCData0Helper(
         int qrylen = wrtCache[qslot];
         int dbstrlen = wrtCache[threadIdx.x];
         int qrypos, rfnpos;
-        fPosGetter(depth, qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, arg1, arg2, arg3);
-        wrtCache[threadIdx.x] = !fInvalidator(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3);
+        fPosGetter(depth, qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, arg1, arg2, arg3, 0/*seedapproachstruct*/);
+        wrtCache[threadIdx.x] = !fInvalidator(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3, 0/*seedapproachstruct*/);
     }
 
     __syncthreads();
@@ -341,6 +341,288 @@ __global__ void InitCCData(
 INSTANTIATE_InitCCData(CHCKCONV_NOCHECK);
 INSTANTIATE_InitCCData(CHCKCONV_CHECK);
 
+// -------------------------------------------------------------------------
+// CalcCCMatrices64LocallyAligned64: calculate cross-covariance matrix between
+// query and reference based on local structural alignment;
+// NOTE: thread block is 1D and processes alignment fragment along structure
+// positions;
+// NOTE: Version for CUS1_TBINITSP_CCMCALC_XDIM==64!
+// seedapproachstruct, local seed alignment frame size;
+// depth, superposition depth for calculating query and reference positions;
+// trigger, minimum similarity threshold;
+// ndbCstrs, total number of reference structures in the chunk;
+// ndbCposs, total number of references' positions in the chunk;
+// dbxpad, number of padded positions for memory alignment;
+// maxnsteps, max number of steps (blockIdx.z) to perform for each 
+// reference structure;
+// arg1 (qryfragfct), argument 1 for calculating starting query position;
+// arg2 (rfnfragfct), argument 2 for calculating starting reference position;
+// NOTE: memory pointers should be aligned!
+// dpscoremtx, rounded global matrix (across molecules) of local dp scores;
+// wrkmemaux, auxiliary working memory;
+// wrkmem, working memory, including the section of CC data;
+// 
+__global__
+void CalcCCMatrices64LocallyAligned64(
+    int seedapproachstruct,
+    const int depth,
+    const float trigger,
+    const uint ndbCstrs,
+    const uint ndbCposs,
+    const uint dbxpad,
+    const uint maxnsteps,
+    int qryfragfct, int rfnfragfct,
+    const char* __restrict__ dpscoremtx,
+    float* __restrict__ wrkmemaux,
+    float* __restrict__ wrkmem)
+{
+    enum {
+        bmQRYNDX, bmRFNNDX, bmTotal,
+        NSCORESCHECK = 4,
+        log2NSCORESCHECK = 2,
+        SMIDIM = twmvEndOfCCDataExt,
+        lXDIM = CUS1_TBINITSP_CCMCALC_XDIM
+    };
+    // blockIdx.x is the block index of positions for query-reference pair;
+    // blockIdx.y is the reference serial number;
+    // blockIdx.z is the query serial number TIMES fragment factor;
+    const uint dbstrndx = blockIdx.x;
+    const uint sfragfct = blockIdx.y;//fragment factor
+    const uint qryndx = blockIdx.z;//query serial number
+    //cache for match positions:
+    __shared__ int posCache[bmTotal][lXDIM+1];
+    //cache for the cross-covarinace matrix and related data: 
+    //no bank conflicts as long as twmvEndOfCCData is odd
+    __shared__ float ccmCache[SMIDIM * lXDIM];
+    int qrylen, dbstrlen;//query and reference length
+    //distances in positions to the beginnings of the query and reference structures:
+    uint qrydst, dbstrdst;
+    int qrytype = gtmtProtein;
+
+
+    // if(threadIdx.x == 0) {
+    //     //NOTE: reuse ccmCache to read convergence flag at both 0 and sfragfct:
+    //     uint mloc0 = ((qryndx * maxnsteps + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
+    //     ccmCache[6] = wrkmemaux[mloc0 + dbstrndx];
+    // }
+    if(threadIdx.x == 32) {//next warp
+        uint mloc = ((qryndx * maxnsteps + sfragfct) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
+        ccmCache[7] = wrkmemaux[mloc + dbstrndx];
+    }
+
+    __syncthreads();
+
+    if(/*(((int)(ccmCache[6])) & (CONVERGED_LOWTMSC_bitval)) || */ccmCache[7])
+        //(NOTE:any type of convergence applies locally);
+        //all threads in the block exit;
+        return;
+
+    //NOTE: no sync as long as ccmCache cells for convergence not overwritten;
+
+
+    //reuse ccmCache
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = GetDbStrDst(dbstrndx);
+    }
+
+    if((lXDIM <= lWarpsize && threadIdx.x == 1) ||
+       (lXDIM  > lWarpsize && threadIdx.x == lWarpsize))
+    {
+        ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+        ((int*)ccmCache)[3] = qrydst = GetQueryDst(qryndx);
+        ((int*)ccmCache)[4] = GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst);
+    }
+
+    __syncthreads();
+
+    //NOTE: no bank conflict when two threads from the same warp access the same address;
+    //blockDim.x includes only several warps
+    dbstrlen = ((int*)ccmCache)[0]; dbstrdst = ((int*)ccmCache)[1];
+    qrylen = ((int*)ccmCache)[2]; qrydst = ((int*)ccmCache)[3];
+    //NOTE: qrytype implies the same type for reference upon type compatibility verification (default)!
+    qrytype = GetMoleculeType(((int*)ccmCache)[4]);
+
+    __syncthreads();
+
+
+    //1. get positions
+    int qrypos, rfnpos;
+
+    GetQryRfnPos_frg2(
+        depth,
+        qrypos, rfnpos, qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, 0/*fragndx; unused*/,
+        seedapproachstruct
+    );
+
+    if(qrypos < 0 || qrylen <= qrypos || rfnpos < 0 || dbstrlen <= rfnpos)
+        //all threads in the block exit if thread 0 is out of bounds
+        return;
+
+    int fraglen = GetNAlnPoss_frg(
+            qrylen, dbstrlen, qrypos, rfnpos, qryfragfct, rfnfragfct, 0/*fragndx; use smaller*/);
+
+    //if fragment is out of bounds (tfm not calculated): all threads in the block exit
+    if(qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen) return;
+
+    //NOTE: dynamically adjusted alignment frame size for nucleic acids:
+    if(qrytype == gtmtNA && seedapproachstruct) seedapproachstruct = SEED_RULE_NA;
+
+    fraglen = GetNAlnPoss_frg(
+        qrylen, dbstrlen,
+        qrypos/*unused*/, rfnpos/*unused*/,
+        qryfragfct/*unused*/, rfnfragfct/*unused*/, 0/*fragndx; unused*/,
+        seedapproachstruct);
+
+    if(qrylen < qrypos + fraglen && dbstrlen < rfnpos + fraglen) 
+        fraglen = myhdmax(qrylen - qrypos, dbstrlen - rfnpos);
+
+    fraglen >>= log2NSCORESCHECK;//divide into NSCORESCHECK equal-length fragments
+
+
+    //2. get max over 4 (NSCORESCHECK) evenly located local scores 
+    const int dblen = ndbCposs + dbxpad;
+    // {{previous smem version:
+    // if(threadIdx.x < NSCORESCHECK) {
+    //     //TODO: add sync before reading as below!
+    //     ccmCache[threadIdx.x + 1 * NSCORESCHECK] = myhdmin(qrylen - 1, qrypos + (int)(threadIdx.x + 1) * fraglen);
+    //     ccmCache[threadIdx.x + 2 * NSCORESCHECK] = myhdmin(dbstrlen - 1, rfnpos + (int)(threadIdx.x + 1) * fraglen);
+    //     int rpos = (qrydst + ccmCache[threadIdx.x + 1 * NSCORESCHECK]/*qrypos*/) * dblen + 
+    //                 dbstrdst + ccmCache[threadIdx.x + 2 * NSCORESCHECK]/*rfnpos*/;
+    //     ccmCache[threadIdx.x] = dpscoremtx[rpos] & 0xfc;//two least significant bits for backtracking!
+    // }
+    // //sync actually required only for 1st warp (NSCORESCHECK):
+    // __syncthreads();
+    // for(int c = (NSCORESCHECK>>1); c >= 1; c >>= 1) {
+    //     //NOTE: Nvidia blog!
+    //     //"The CUDA programming model does not guarantee that all the reads will be
+    //     // performed before all the writes"
+    //     int bf = (threadIdx.x < c && ccmCache[threadIdx.x] < ccmCache[threadIdx.x + c]);
+    //     __syncthreads();
+    //     if(bf) {
+    //         ccmCache[threadIdx.x] = ccmCache[threadIdx.x + c];
+    //         ccmCache[threadIdx.x + 1 * NSCORESCHECK] = ccmCache[threadIdx.x + c + 1 * NSCORESCHECK];
+    //         ccmCache[threadIdx.x + 2 * NSCORESCHECK] = ccmCache[threadIdx.x + c + 2 * NSCORESCHECK];
+    //     }
+    //     __syncthreads();
+    // }
+    // }}
+    int y, x; float vr;
+    if(threadIdx.x < NSCORESCHECK) {
+        y = myhdmin(qrylen - 1, qrypos + (int)(threadIdx.x + 1) * fraglen);
+        x = myhdmin(dbstrlen - 1, rfnpos + (int)(threadIdx.x + 1) * fraglen);
+        int rpos = (qrydst + y/*qrypos*/) * dblen + dbstrdst + x/*rfnpos*/;
+        vr = (float)(unsigned char)(dpscoremtx[rpos] & 0xfc);//two least significant bits for backtracking!
+    }
+    for(int c = (NSCORESCHECK>>1); c >= 1; c >>= 1) {
+        float vref = __shfl_down_sync(0xffffffff, vr, c);
+        int yref = __shfl_down_sync(0xffffffff, y, c);
+        int xref = __shfl_down_sync(0xffffffff, x, c);
+        if(vr < vref) { vr = vref; y = yref; x = xref; }
+    }
+    // NOTE: y,x needed by thread 0 only!
+    // if(threadIdx.x == 0 && threadIdx.y == 0) {
+    //     ccmCache[1 * NSCORESCHECK] = y;
+    //     ccmCache[2 * NSCORESCHECK] = x;
+    // }
+    // __syncthreads();
+    // y = ccmCache[1 * NSCORESCHECK];//query end position
+    // x = ccmCache[2 * NSCORESCHECK];//reference end position
+    // __syncthreads();
+
+
+    //initialize cache; not read until the next sync;
+    if(threadIdx.x == 0 && threadIdx.y == 0) {
+        posCache[bmQRYNDX][lXDIM] = 0;
+        posCache[bmRFNNDX][lXDIM] = dpbtckSTOP;
+    }
+    for(int i = 0; i < SMIDIM; i++)
+        ccmCache[threadIdx.x * SMIDIM + i] = 0.0f;
+
+    //3. backtrace over local alignment
+    int alnlen = 0;
+    char btck = dpbtckDIAG;
+    while(btck != dpbtckSTOP) {
+        int ndx = 0;
+        if(threadIdx.x == 0 && threadIdx.y == 0) {
+            //thread 0 records matched positions
+            for(; ndx < lXDIM;) {
+                if(y < qrypos/*0*/ || x < rfnpos/*0*/) {
+                    btck = dpbtckSTOP;
+                    break;
+                }
+                int rpos = (qrydst + y) * dblen + dbstrdst + x;
+                btck = dpscoremtx[rpos] & 0x3;//READ
+                if(btck == dpbtckSTOP) break;
+                if(btck == dpbtckUP) { y--; continue; }
+                else if(btck == dpbtckLEFT) { x--; continue; }
+                //(btck == dpbtckDIAG)
+                posCache[bmQRYNDX][ndx] = y;
+                posCache[bmRFNNDX][ndx] = x;
+                x--; y--; ndx++;
+            }
+            //save ndx and btck values in cache:
+            posCache[bmQRYNDX][lXDIM] = ndx;
+            posCache[bmRFNNDX][lXDIM] = btck;
+        }
+
+        __syncthreads();
+
+        ndx = posCache[bmQRYNDX][lXDIM];
+        btck = posCache[bmRFNNDX][lXDIM];
+
+        //process matched positions
+        if(threadIdx.x < ndx) {
+            int ypos = qrydst + posCache[bmQRYNDX][threadIdx.x];
+            int xpos = dbstrdst + posCache[bmRFNNDX][threadIdx.x];
+            UpdateCCMOneAlnPos<SMIDIM,1/*UPDATENPOS*/>(ypos, xpos, ccmCache);
+        }
+        __syncthreads();
+        //#aligned positions have increased by ndx
+        alnlen += ndx;
+    }
+
+
+    if(alnlen < 1 || (trigger && alnlen < myhdmin(16, fraglen))) {
+        uint mloc = ((qryndx * maxnsteps + sfragfct) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
+        if(threadIdx.x == 0) {
+            int wmaflag0 = sfragfct? 0: (int)(wrkmemaux[mloc + dbstrndx]);
+            wrkmemaux[mloc + dbstrndx] = (wmaflag0 | CONVERGED_SCOREDP_bitval);
+        }
+        return;//all exit
+    }
+
+
+    //4. final reduction
+    //NOTE: synced above; unroll by a factor of 2
+    if(threadIdx.x < (lXDIM>>1)) {
+        for(int i = 0; i < SMIDIM; i++)
+            ccmCache[threadIdx.x * SMIDIM + i] +=
+                ccmCache[(threadIdx.x + (lXDIM>>1)) * SMIDIM + i];
+    }
+
+    __syncthreads();
+
+    //unroll warp
+    if(threadIdx.x < lWarpsize) {
+        for(int i = 0; i < SMIDIM; i++) {
+            float sum = ccmCache[threadIdx.x * SMIDIM + i];
+            sum = mywarpreducesum(sum);
+            //write to the first data slot of SMEM
+            if(threadIdx.x == 0) ccmCache[i] = sum;
+        }
+    }
+
+    //in case of twmvEndOfCCData gets larger than warpSize
+    __syncthreads();
+
+    //write the result to global memory
+    if(threadIdx.x < SMIDIM) {
+        uint mloc = ((qryndx * maxnsteps + sfragfct) * ndbCstrs + dbstrndx) * nTWorkingMemoryVars;
+        wrkmem[mloc + threadIdx.x] = ccmCache[threadIdx.x];
+    }
+}
+
 
 
 // -------------------------------------------------------------------------
@@ -419,11 +701,17 @@ void CalcCCMatrices64Helper(
     }
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        GetQueryLenDst(qryndx, (int*)ccmCache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = GetDbStrDst(dbstrndx);
+    }
+
+    if((CUS1_TBINITSP_CCMCALC_XDIM <= lWarpsize && threadIdx.x == 1) ||
+       (CUS1_TBINITSP_CCMCALC_XDIM  > lWarpsize && threadIdx.x == lWarpsize))
+    {
+        ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+        ((int*)ccmCache)[3] = GetQueryDst(qryndx);
     }
 
     __syncthreads();
@@ -438,13 +726,13 @@ void CalcCCMatrices64Helper(
 
     int qrypos, rfnpos;
 
-    fPosGetter(depth,  qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, arg1, arg2, arg3);
+    fPosGetter(depth,  qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, arg1, arg2, arg3, 0/*seedapproachstruct*/);
 
     if(qrylen <= qrypos + ndx0 || dbstrlen <= rfnpos + ndx0)
         //all threads in the block exit if thread 0 is out of bounds
         return;
 
-    if(fInvalidator(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3))
+    if(fInvalidator(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3, 0/*seedapproachstruct*/))
         //all threads in the block exit
         return;
 
@@ -731,8 +1019,8 @@ void CalcCCMatrices64_frgbest(
 // NOTE: memory pointers should be aligned!
 // wrkmem, working memory, including the section of CC data (saved as 
 // whole for each structure) to copy;
-// wrkmem2, working memory, including the section of CC data to be written by 
-// field;
+// wrkmem2, working memory, including the section of CC data to be written by field;
+// seedapproachstruct, local seed alignment frame size;
 // 
 template<
     int CHCKCONV,
@@ -753,7 +1041,8 @@ void CopyCCDataToWrkMem2Helper(
     int arg1, int arg2, int arg3,
     const float* __restrict__ wrkmemaux,
     const float* __restrict__ wrkmem,
-    float* __restrict__ wrkmem2)
+    float* __restrict__ wrkmem2,
+    const int seedapproachstruct = 0)
 {
     //cache for cross-covarinace matrices and related data: 
     //bank conflicts resolved as long as innermost dim is odd
@@ -801,10 +1090,12 @@ void CopyCCDataToWrkMem2Helper(
         else {
             int qrypos, rfnpos, nlposs;
             dbstrlen = GetDbStrLength(absndx);
-            fPosGetter(depth,  qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, arg1, arg2, arg3);
-            nlposs = fAlnLenGetter(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3);
+            fPosGetter(depth,  qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, arg1, arg2, arg3, seedapproachstruct);
+            nlposs = fAlnLenGetter(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3, 0/*seedapproachstruct*/);
+            if(seedapproachstruct) {
+                if(!(qrylen < qrypos + nlposs || dbstrlen < rfnpos + nlposs)) nalnposs = nlposs;
             //NOTE: fInvalidator changes qrylen and dbstrlen by definition!
-            if(!fInvalidator(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3))
+            } else if(!fInvalidator(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3, 0/*seedapproachstruct*/))
                 nalnposs = nlposs;
             //write nalnposs to smem; this slot won't be overwritten: no sync
             ccmCache[threadIdx.x][twmvNalnposs] = nalnposs;
@@ -825,12 +1116,12 @@ void CopyCCDataToWrkMem2Helper(
             //read only if nalnposs >0
             uint mloc = ((qryndx * maxnsteps + sfragfct) * ndbCstrs + absndxloc) * nTWorkingMemoryVars;
             ccmCache[reldbndx][threadIdx.x] = wrkmem[mloc + threadIdx.x];
-            if(threadIdx.x == twmvNalnposs && 
-               ccmCache[reldbndx][twmvNalnposs] == ccmCache[reldbndx][twmvNalnposs+1])
-                //NOTE: if nalnposs equals maximum possible for given qrypos and rfnpos,
-                //assign it to 0 so that the Kabsch algorithm is not applied to this 
-                //particular query-reference pair:
-                ccmCache[reldbndx][twmvNalnposs] = 0.0f;
+            // if(threadIdx.x == twmvNalnposs && 
+            //    ccmCache[reldbndx][twmvNalnposs] == ccmCache[reldbndx][twmvNalnposs+1])
+            //     //NOTE: if nalnposs equals maximum possible for given qrypos and rfnpos,
+            //     //assign it to 0 so that the Kabsch algorithm is not applied to this 
+            //     //particular query-reference pair:
+            //     ccmCache[reldbndx][twmvNalnposs] = 0.0f;
         }
     }
 
@@ -999,8 +1290,10 @@ void CopyCCDataToWrkMem2_frg(
 // algorithm application for multiple structures simultaneously;
 // same as CopyCCDataToWrkMem2_var with more extensive parallelization;
 // depth, superposition depth for calculating query and reference positions;
+template<int READNPOS>
 __global__
 void CopyCCDataToWrkMem2_frg2(
+    const int seedapproachstruct,
     const int depth,
     const uint ndbCstrs,
     const uint maxnsteps,
@@ -1011,13 +1304,29 @@ void CopyCCDataToWrkMem2_frg2(
 {
     int qryndx = blockIdx.y;//query index in the chunk
     int sfragfct = blockIdx.z;//fragment factor
-    fragndx = (sfragfct & 1);
+    fragndx = (READNPOS == READNPOS_READ)? 0: (sfragfct & 1);
 
-    CopyCCDataToWrkMem2Helper<CHCKCONV_CHECK,READNPOS_NOREAD>(
+    CopyCCDataToWrkMem2Helper<CHCKCONV_CHECK,READNPOS>(
         GetQryRfnPos_frg2, PositionsOutofBounds_frg, GetNAlnPoss_frg, depth,
         sfragfct, qryndx, ndbCstrs, maxnsteps,  qryfragfct, rfnfragfct, fragndx,
-        wrkmemaux, wrkmem, wrkmem2);
+        wrkmemaux, wrkmem, wrkmem2, seedapproachstruct);
 }
+
+// -------------------------------------------------------------------------
+// Instantiations
+//
+#define INSTANTIATE_CopyCCDataToWrkMem2_frg2(READNPOS) \
+    template __global__ void CopyCCDataToWrkMem2_frg2<READNPOS>( \
+        const int seedapproachstruct, const int depth, const uint ndbCstrs, \
+        const uint maxnsteps, int qryfragfct, int rfnfragfct, int fragndx, \
+        const float* __restrict__ wrkmemaux, \
+        const float* __restrict__ wrkmem, \
+        float* __restrict__ wrkmem2);
+
+INSTANTIATE_CopyCCDataToWrkMem2_frg2(READNPOS_NOREAD);
+INSTANTIATE_CopyCCDataToWrkMem2_frg2(READNPOS_READ);
+
+// =========================================================================
 
 #if 0
 // CopyCCDataToWrkMem2_frgbest: copy cross-covariance matrix between the 

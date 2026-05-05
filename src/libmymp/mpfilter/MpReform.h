@@ -57,8 +57,8 @@ public:
 
     void SelectAndReformat(const int ndbCstrs2, const int maxndbCposs) {
         SelectAndReformatKernel(
-            ndbCstrs2, maxndbCposs,
-            filterdata_, tfmmem_, wrkmemaux_, tmpdpdiagbuffers_);
+            ndbCstrs2, maxndbCposs,  filterdata_,
+            querypmbeg_, bdbCpmbeg_, tfmmem_, wrkmemaux_, tmpdpdiagbuffers_);
     }
 
 
@@ -75,6 +75,8 @@ protected:
         const int ndbCstrs2,
         const int maxndbCposs,
         const uint* const __RESTRICT__ filterdata,
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
         float* const __RESTRICT__ tfmmem,
         float* const __RESTRICT__ wrkmemaux,
         float* const __RESTRICT__ tmpdpdiagbuffers);

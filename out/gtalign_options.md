@@ -1,9 +1,9 @@
 ```
 
-gtalign 0.18.00 (compiled with GPU support)
+gtalign 1.0.0 (compiled with GPU support)
 
-GTalign, HPC protein structure alignment, superposition and search tool.
-(C)2021-2025 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
+GTalign, HPC macromolecular structure alignment, superposition and search tool.
+(C)2021-2026 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
 
 
 Usage (one of the two):
@@ -98,10 +98,18 @@ Interpretation options:
                             1: PDB;
                             2: PDBx/mmCIF.
                         Default=0
---atom=<atom_name>          4-character atom name (with spaces) to represent a
-                            residue (base); e.g., " C3'" (RNAs).
-                        Default=" CA " (proteins)
+--aatom=<atom_name>         4-character atom name (with spaces) to represent a
+                            protein amino acid.
+                        Default=" CA "
+--natom=<atom_name>         4-character atom name (with spaces) to represent a
+                            nucleic acid nucleotide.
+                        Default=" C3'"
 --hetatm                    Consider and align both ATOM and HETATM residues.
+--mol=<code>                Molecule type for calculating TM-scores:
+                            0: Protein;
+                            1: Nucleic acid (RNA, DNA);
+                            2: Automatically determined by the majority atom.
+                        Default=2
 --ter=<code>                The end of a structure (chain) in a file is
                             designated by
                             0: end of file;
@@ -127,7 +135,8 @@ Similarity pre-screening options:
                             Minimum provisional TM-score [0,1) for structure
                             pairs to proceed to further stages.
                             0, all pairs are subject to further processing.
-                        Default=0.3
+                            RECOMMENDED: 0.3-0.4 for proteins; 0.2 for RNAs.
+                        Default=0.4
 
 Per-pair computation options:
 --symmetric                 Always produce symmetric alignments for the same
@@ -138,11 +147,23 @@ Per-pair computation options:
 --depth=<code>              Superposition search depth:
                             0: deep; 1: high; 2: medium; 3: shallow.
                         Default=2
+--gapcost=<penalty_code>    Gap cost used to estimate local similarity for
+                            superposition configurations.
+                            0: -0.8;  1: -1.2;  2: -3.0.
+                        Default=1
 --trigger=<percentage>      Threshold for estimated fragment similarity in
                             percent [0,100] to trigger superposition
                             analysis for a certain configuration
                             (0, unconditional analysis).
                         Default=50
+--seedrule=<code>           Seeding strategy for superposition configurations:
+                            0: continuous fragments;
+                            1: 64-frame local alignment;
+                            2: 128-frame local alignment.
+                        Default=1
+--window=<size>             Initial window size (in residues) used to analyze
+                            superposition candidates {256,512}.
+                        Default=256
 --nbranches=<number>        Number [3,16] of independent top-performing
                             branches identified during superposition search to
                             explore in more detail.
@@ -173,7 +194,8 @@ Per-pair computation options:
                             11: --depth=3 --trigger=20 --refinement=0 --convergence=2
                             12: --depth=3 --trigger=50 --refinement=0 --convergence=2
                             13: --no-detailed-search --refinement=0 --convergence=2
-                        Default=9
+                        Default=9 (NOTE: Use --speed=8 for nucleic acids to match the
+                            protein default)
 
 HPC options:
 --cpu-threads-reading=<count>
@@ -234,7 +256,7 @@ Device options:
                         Default=[all memory of GPU(s)] (with support for GPUs)
                         Default=16384 (without support for GPUs)
 --dev-expected-length=<length>
-                            Expected length of database proteins. Its values
+                            Expected length of database entries. Its values
                             are restricted to the interval [20,200].
                             NOTE: Increasing it reduces memory requirements,
                             but mispredictions may cost additional computation
@@ -264,7 +286,8 @@ Examples:
 gtalign -v --qrs=str1.cif.gz --rfs=my_huge_structure_database.tar -o my_output_directory
 gtalign -v --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory
 gtalign -v --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory
-gtalign -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=archive.tar,my_ref_dir -s 0 -o mydir
+gtalign -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=archive.tar,my_ref_dir -s 0 -o mydir --speed=13
 gtalign -v --cls=my_huge_structure_database.tar -o my_output_directory
 
 ```
+

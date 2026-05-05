@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -25,6 +25,7 @@ __global__
 void ProduceAlignmentUsingIndex2(
     const int stacksize,
     const bool WRTNDX,
+    const int windowsize,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -40,11 +41,13 @@ void ProduceAlignmentUsingIndex2(
 
 // ProduceAlignmentUsingDynamicIndex2: same as ProduceAlignmentUsingIndex2 
 // except that the alignments are produced using dynamically selected index
-template<int SECSTRFILT>
+template<int SECSTRFILT, int NANOSS = 0>
 __global__
 void ProduceAlignmentUsingDynamicIndex2(
     const int stacksize,
     const bool WRTNDX,
+    const int windowsize,
+    const int seedapproachstruct,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -66,6 +69,7 @@ template<int SECSTRFILT = 0>
 __global__
 void PositionalCoordsFromIndexLinear2(
     const int stacksize,
+    const int windowsize,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -84,6 +88,7 @@ void PositionalCoordsFromIndexLinear2(
 __global__
 void MakeAlignmentLinear2(
     const bool complete,
+    const int windowsize,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,

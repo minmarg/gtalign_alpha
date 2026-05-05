@@ -29,6 +29,14 @@ __global__ void SetLowScoreConvergenceFlag(
     float* __restrict__ wrkmemaux
 );
 
+// InitWithTypeCompatibility: initialize all scores and set convergence 
+// flag for incompatible types;
+__global__ void InitWithTypeCompatibility(
+    const uint ndbCstrs,
+    const uint maxnsteps,
+    float* __restrict__ wrkmemaux
+);
+
 // InitScores: initialize best and current scores to 0;
 // INITOPT, template parameter controlling which scores are to be 
 // initialized, see above;
@@ -160,7 +168,8 @@ __global__ void SaveTopNScoresAndTMsAmongSecondaryBests(
     const uint effnsteps,
     const float* __restrict__ wrkmemtmibest,
     float* __restrict__ wrkmemtm,
-    float* __restrict__ wrkmemaux
+    float* __restrict__ wrkmemaux,
+    const int seedapproachstruct = 0
 );
 
 

@@ -364,6 +364,7 @@ void MpBatch::ProcessBlock(
         //calculate secondary structures for the structures in the chunk
         if(ndbCstrs1 && ndbCposs1)
             MpSecStr(
+                tmpdpdiagbuffers,
                 querypmbeg, querypmend, bdbCpmbeg, bdbCpmend,
                 nqystrs, ndbCstrs1, nqyposs, ndbCposs1,
                 qystr1len, dbstr1len1, qystrnlen, dbstrnlen1, dbxpad1

@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -232,7 +232,7 @@ void PMBatchStrData::FilterStructs(
         ps_assigner.assign<FPTYPE,pmv2DCoords>(newaddr, address, length);
         ps_assigner.assign<FPTYPE,pmv2DCoords+1>(newaddr, address, length);
         ps_assigner.assign<FPTYPE,pmv2DCoords+2>(newaddr, address, length);
-        ps_assigner.assign<LNTYPE,pmv2D_Ins_Ch_Ord>(newaddr, address, length);
+        ps_assigner.assign<INTYPE,pmv2D_Ins_Ch_Ord>(newaddr, address, length);
         ps_assigner.assign<INTYPE,pmv2DResNumber>(newaddr, address, length);
         ps_assigner.assign<CHTYPE,pmv2Drsd>(newaddr, address, length);
         ps_assigner.assign<CHTYPE,pmv2Dss>(newaddr, address, length);
@@ -550,7 +550,7 @@ size_t PMBatchStrData::Deserialize(
     if(fp.rdbuf())
         fp.rdbuf()->pubsetbuf(tmpreadbuff_, PMBatchStrData_TMPBUFFSIZE);
 
-    //write a variable to file:
+    //read a variable from file:
     std::function<void(size_t*)> lfReadVar = [&fp,&fname](size_t* var) {
         size_t bytes = sizeof(*var);
         fp.read(reinterpret_cast<char*>(var), bytes);
@@ -640,7 +640,7 @@ void PMBatchStrData::Print() const
                 ((FPTYPE*)(bdbCpmbeg_[pmv2DCoords+1]))[i+dbeg],
                 ((FPTYPE*)(bdbCpmbeg_[pmv2DCoords+2]))[i+dbeg]
             };
-            unsigned int inschord = ((LNTYPE*)(bdbCpmbeg_[pmv2D_Ins_Ch_Ord]))[i+dbeg];
+            int inschord = ((INTYPE*)(bdbCpmbeg_[pmv2D_Ins_Ch_Ord]))[i+dbeg];
             char inscode = PM2D_GET_INSCODE(inschord);
             char chain = PM2D_GET_CHID(inschord);
             char chord = PM2D_GET_CHORD(inschord);
@@ -680,7 +680,7 @@ void PMBatchStrData::Print(char* const * const bdbpmbeg, char* const * const bdb
                 ((FPTYPE*)(bdbpmbeg[pmv2DCoords+1]))[i+dbeg],
                 ((FPTYPE*)(bdbpmbeg[pmv2DCoords+2]))[i+dbeg]
             };
-            unsigned int inschord = ((LNTYPE*)(bdbpmbeg[pmv2D_Ins_Ch_Ord]))[i+dbeg];
+            int inschord = ((INTYPE*)(bdbpmbeg[pmv2D_Ins_Ch_Ord]))[i+dbeg];
             char inscode = PM2D_GET_INSCODE(inschord);
             char chain = PM2D_GET_CHID(inschord);
             char chord = PM2D_GET_CHORD(inschord);

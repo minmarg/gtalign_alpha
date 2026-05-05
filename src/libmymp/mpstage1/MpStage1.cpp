@@ -28,6 +28,8 @@
 //
 void MpStage1::Preinitialize1Kernel(
     const bool condition4filter1,
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
     float* const __RESTRICT__ wrkmemtmibest,
     float* const __RESTRICT__ tfmmem,
     float* const __RESTRICT__ alndatamem,
@@ -49,11 +51,11 @@ void MpStage1::Preinitialize1Kernel(
     const int nblocks_y = nqystrs_;
     const int nblocks_z = maxnsteps_;
 
-    //cache for write flags of structure information
-    // int wrts[tfmXDIM+1];
+    float cmpf[attXDIM];//compatibility flags
 
     //NOTE: constant member pointers are shared by definition;
-    #pragma omp parallel num_threads(nthreads) default(shared)
+    #pragma omp parallel num_threads(nthreads) default(shared) \
+        private(cmpf)
     {
         #pragma omp for collapse(3)
         for(int si = 0; si < nblocks_z; si++)
@@ -115,14 +117,45 @@ void MpStage1::Preinitialize1Kernel(
                     const int istre = mymin(istr0 + attXDIM, (int)ndbCstrs_);
                     const int memloc = ((qi * maxnsteps_ + si) * nTAuxWorkingMemoryVars) * ndbCstrs_;
 
+                    const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
+                    const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+                    const int typeqry = GetMoleculeType(typexq);
+
+                    if(condition4filter1) {
+                        #pragma omp simd
+                        for(int rib = istr0; rib < istre; rib++) {
+                            const int ri = rib - istr0;
+                            cmpf[ri] = (float)CONVERGED_LOWTMSC_bitval;
+                        }
+                    } else if(si == 0) {
+                        #pragma omp simd aligned(bdbCpmbeg:PMBSdatalignment)
+                        for(int rib = istr0; rib < istre; rib++) {
+                            const int ri = rib - istr0;
+                            const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                            const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                            cmpf[ri] = (typeqry == GetMoleculeType(typexr))? 0.0f: (float)CONVERGED_LOWTMSC_bitval;
+                        }
+                    } else {
+                        #pragma omp simd
+                        for(int rib = istr0; rib < istre; rib++) {
+                            const int ri = rib - istr0;
+                            cmpf[ri] = 0.0f;
+                        }
+                    }
+
                     for(int f = 0; f < nTAuxWorkingMemoryVars; f++) {
                         //initialize all fields of auxiliary memory section
                         const int mibeg = memloc + f * (int)ndbCstrs_ + istr0;
                         const int miend = memloc + f * (int)ndbCstrs_ + istre;
-                        const float value = 
-                            (f == tawmvConverged && condition4filter1)? CONVERGED_LOWTMSC_bitval: 0.0f;
                         #pragma omp simd aligned(wrkmemaux:memalignment)
-                        for(int mi = mibeg; mi < miend; mi++) wrkmemaux[mi] = value;
+                        for(int mi = mibeg; mi < miend; mi++) wrkmemaux[mi] = 0.0f;
+                    }
+
+                    #pragma omp simd aligned(wrkmemaux:memalignment)
+                    for(int rib = istr0; rib < istre; rib++) {
+                        const int ri = rib - istr0;
+                        const int mi = memloc + tawmvConverged * (int)ndbCstrs_ + rib;
+                        wrkmemaux[mi] = cmpf[ri];
                     }
                 }
     }
@@ -280,6 +313,13 @@ void MpStage1::FindFragKernel(
             for(int si = 0; si < nblocks_y; si++)
                 for(int ri = 0; ri < nblocks_x; ri++)
                 {//threads process references
+                    //check convergence:
+                    const int mloc0 = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs_;
+                    tfm[6] = wrkmemaux[mloc0 + ri];//reuse cache
+                    if(((int)(tfm[6])) & (CONVERGED_LOWTMSC_bitval))
+                        //(NOTE:convergence CONVERGED_LOWTMSC_bitval applies globally);
+                        continue;
+
                     const int qrylen = PMBatchStrData::GetLengthAt(querypmbeg, qi);
                     const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
@@ -580,6 +620,13 @@ void MpStage1::RefineFragInitKernel(
             for(int si = 0; si < nblocks_y; si++)
                 for(int ri = 0; ri < nblocks_x; ri++)
                 {//threads process references
+                    //check convergence:
+                    const int mloc0 = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs_;
+                    tfm[6] = wrkmemaux[mloc0 + ri];//reuse cache
+                    if(((int)(tfm[6])) & (CONVERGED_LOWTMSC_bitval))
+                        //(NOTE:convergence CONVERGED_LOWTMSC_bitval applies globally);
+                        continue;
+
                     const int sfragfct = si / nmaxsubfrags;//fragment factor
                     const int sfragndx = si - sfragfct * nmaxsubfrags;//fragment length index
 

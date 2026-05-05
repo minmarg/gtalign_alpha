@@ -77,8 +77,10 @@ void stage1::preinitialize1(
             <<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
                 ndbCstrs,  maxnsteps, minfraglen, false/*checkfragos*/,  wrkmemaux);
     else
-        InitScores<INITOPT_ALL><<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
-            ndbCstrs,  maxnsteps, minfraglen, false/*checkfragos*/,  wrkmemaux);
+        InitWithTypeCompatibility<<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
+            ndbCstrs,  maxnsteps,  wrkmemaux);
+        // InitScores<INITOPT_ALL><<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
+        //     ndbCstrs,  maxnsteps, minfraglen, false/*checkfragos*/,  wrkmemaux);
     MYCUDACHECKLAST;
 
     //initialize memory for transformation matrices (once in the stage);

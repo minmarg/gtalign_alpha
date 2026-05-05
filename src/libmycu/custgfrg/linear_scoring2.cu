@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -37,6 +37,7 @@
 // qrylen, dbstrlen, query and reference lengths;
 // qrydst, dbstrdst, distances to the beginnings of query and reference structures;
 // WRTNDX, flag of writing query indices participating in an alignment;
+// seedapproachstruct, local alignment-based approach for an initial superposition seed;
 // depth, superposition depth for calculating query and reference positions;
 // nqystrs, total number of queries;
 // ndbCstrs, total number of reference structures in the chunk;
@@ -60,6 +61,8 @@ void ProduceAlignmentUsingIndex2ReferenceHelper(
     const int qrydst,
     const int dbstrdst,
     const bool WRTNDX,
+    const int windowsize,
+    const int seedapproachstruct,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -91,13 +94,14 @@ void ProduceAlignmentUsingIndex2ReferenceHelper(
     //relative position index:
     const uint ndx0 = blockIdx.x * blockDim.x * CUSF_TBSP_INDEX_SCORE_XFCT;
     const uint ndx = ndx0 + threadIdx.x;
-    int fragndx = (sfragfct & 1);
+    int fragndx = seedapproachstruct? 0: (sfragfct & 1);
 
     int qrypos, rfnpos;
 
     GetQryRfnPos_frg2(
         depth,
-        qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, fragndx
+        qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, fragndx,
+        seedapproachstruct
     );
 
     int fraglen = GetNAlnPoss_frg(
@@ -106,7 +110,11 @@ void ProduceAlignmentUsingIndex2ReferenceHelper(
     //if fragment is out of bounds (tfm not calculated): all threads in the block exit
     if(qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen) return;
 
-    fraglen = myhdmin(dbstrlen, CUSF_TBSP_INDEX_SCORE_POSLIMIT2);
+    // fraglen = GetNAlnPoss_frg(
+    //         qrylen, dbstrlen, qrypos, rfnpos, qryfragfct, rfnfragfct, fragndx,
+    //         seedapproachstruct);
+
+    fraglen = myhdmin(dbstrlen, windowsize);
     qrypos = myhdmax(0, qrypos - (fraglen>>1));
     qrylen = myhdmin(qrylen, qrypos + fraglen);
     qrypos = myhdmax(0, qrylen - fraglen);
@@ -143,6 +151,7 @@ void ProduceAlignmentUsingIndex2ReferenceHelper(
 
     for(int i = 0; i < CUSF_TBSP_INDEX_SCORE_XFCT; i++) {
         //manually unroll along data blocks by a factor of CUSF_TBSP_INDEX_SCORE_XFCT
+        // int qt;
         char qss;
         float qx, qy, qz;
         int pos0 = ndx + i * blockDim.x;//position index starting from 0
@@ -154,6 +163,7 @@ void ProduceAlignmentUsingIndex2ReferenceHelper(
             qx = GetQueryCoord<pmv2DX>(dpos);
             qy = GetQueryCoord<pmv2DY>(dpos);
             qz = GetQueryCoord<pmv2DZ>(dpos);
+            // qt = GetMoleculeType(GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dpos));
             if(SECSTRFILT == 1) qss = GetQuerySS(dpos);
 
             //WRITE the query coordinates of part of the alignment before transform:
@@ -217,6 +227,7 @@ void ProduceAlignmentUsingIndex2ReferenceHelper(
 // qrylen, dbstrlen, query and reference lengths;
 // qrydst, dbstrdst, distances to the beginnings of query and reference structures;
 // WRTNDX, flag of writing query indices participating in an alignment;
+// seedapproachstruct, local alignment-based approach for an initial superposition seed;
 // depth, superposition depth for calculating query and reference positions;
 // nqystrs, total number of queries;
 // ndbCstrs, total number of reference structures in the chunk;
@@ -240,6 +251,8 @@ void ProduceAlignmentUsingIndex2QueryHelper(
     const int qrydst,
     const int dbstrdst,
     const bool WRTNDX,
+    const int windowsize,
+    const int seedapproachstruct,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -271,13 +284,14 @@ void ProduceAlignmentUsingIndex2QueryHelper(
     //relative position index:
     const uint ndx0 = blockIdx.x * blockDim.x * CUSF_TBSP_INDEX_SCORE_XFCT;
     const uint ndx = ndx0 + threadIdx.x;
-    int fragndx = (sfragfct & 1);
+    int fragndx = seedapproachstruct? 0: (sfragfct & 1);
 
     int qrypos, rfnpos;
 
     GetQryRfnPos_frg2(
         depth,
-        qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, fragndx
+        qrypos, rfnpos,  qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, fragndx,
+        seedapproachstruct
     );
 
     int fraglen = GetNAlnPoss_frg(
@@ -286,7 +300,11 @@ void ProduceAlignmentUsingIndex2QueryHelper(
     //if fragment is out of bounds (tfm not calculated): all threads in the block exit
     if(qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen) return;
 
-    fraglen = myhdmin(qrylen, CUSF_TBSP_INDEX_SCORE_POSLIMIT2);
+    // fraglen = GetNAlnPoss_frg(
+    //         qrylen, dbstrlen, qrypos, rfnpos, qryfragfct, rfnfragfct, fragndx,
+    //         seedapproachstruct);
+
+    fraglen = myhdmin(qrylen, windowsize);
     //qrypos = myhdmax(0, qrypos - (fraglen>>1));
     rfnpos = myhdmax(0, rfnpos - (fraglen>>1));
     dbstrlen = myhdmin(dbstrlen, rfnpos + fraglen);
@@ -324,6 +342,7 @@ void ProduceAlignmentUsingIndex2QueryHelper(
 
     for(int i = 0; i < CUSF_TBSP_INDEX_SCORE_XFCT; i++) {
         //manually unroll along data blocks by a factor of CUSF_TBSP_INDEX_SCORE_XFCT
+        // int rt;
         char rss;
         float rx, ry, rz;
         int pos0 = ndx + i * blockDim.x;//position index starting from 0
@@ -335,6 +354,7 @@ void ProduceAlignmentUsingIndex2QueryHelper(
             rx = GetDbStrCoord<pmv2DX>(dpos);
             ry = GetDbStrCoord<pmv2DY>(dpos);
             rz = GetDbStrCoord<pmv2DZ>(dpos);
+            // rt = GetMoleculeType(GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dpos));
             if(SECSTRFILT == 1) rss = GetDbStrSS(dpos);
 
             //WRITE the reference coordinates of part of the alignment before transform:
@@ -392,6 +412,7 @@ void ProduceAlignmentUsingIndex2QueryHelper(
 // building an alignment;
 // WRTNDX, flag of writing query indices participating in an alignment;
 // stacksize, dynamically determined stack size;
+// windowsize, window size in residues;
 // depth, superposition depth for calculating query and reference positions;
 // nqystrs, total number of queries;
 // ndbCstrs, total number of reference structures in the chunk;
@@ -408,6 +429,7 @@ __global__
 void ProduceAlignmentUsingIndex2(
     const int stacksize,
     const bool WRTNDX,
+    const int windowsize,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -460,7 +482,8 @@ void ProduceAlignmentUsingIndex2(
         dSMEM, stacksize,
         sfragfct, qryndx, dbstrndx,
         qrylen, dbstrlen, qrydst, dbstrdst,
-        WRTNDX, (depth), nqystrs, ndbCstrs, ndbCposs,
+        WRTNDX, windowsize,
+        0/*seedapproachstruct*/, (depth), nqystrs, ndbCstrs, ndbCposs,
         maxnsteps, qryfragfct, rfnfragfct,
         wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
 }
@@ -469,7 +492,8 @@ void ProduceAlignmentUsingIndex2(
 // 
 #define INSTANTIATE_ProduceAlignmentUsingIndex2(tpSECSTRFILT) \
     template __global__ void ProduceAlignmentUsingIndex2<tpSECSTRFILT>( \
-        const int stacksize, const bool WRTNDX, const int depth, const uint nqystrs, \
+        const int stacksize, const bool WRTNDX, \
+        const int windowsize, const int depth, const uint nqystrs, \
         const uint ndbCstrs, const uint ndbCposs, const uint maxnsteps, \
         const int qryfragfct, const int rfnfragfct, \
         const float* __restrict__ wrkmemtm, \
@@ -484,11 +508,13 @@ INSTANTIATE_ProduceAlignmentUsingIndex2(1);
 // ProduceAlignmentUsingDynamicIndex2: same as ProduceAlignmentUsingIndex2 
 // except that the alignments are produced using dynamically selected index
 // 
-template<int SECSTRFILT>
+template<int SECSTRFILT, int NANOSS>
 __global__
 void ProduceAlignmentUsingDynamicIndex2(
     const int stacksize,
     const bool WRTNDX,
+    const int windowsize,
+    const int seedapproachstruct,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -513,6 +539,7 @@ void ProduceAlignmentUsingDynamicIndex2(
     int qrylen, dbstrlen;//query and reference length
     //distances in positions to the beginnings of the query and reference structures:
     int qrydst, dbstrdst;
+    int notusingss = 0;
 
     //READ convergence flag for stopping;
     //NOTE: a block size of more than one warp expected
@@ -521,9 +548,18 @@ void ProduceAlignmentUsingDynamicIndex2(
         dSMEM[7] = wrkmemaux[mloc + dbstrndx];
     }
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
-    if(threadIdx.x < 2) GetDbStrLenDst(dbstrndx, (int*)dSMEM);
-    if(threadIdx.x < 2) GetQueryLenDst(qryndx, (int*)dSMEM + 2);
+    //reuse cache
+    if(threadIdx.x == 0) {
+        ((int*)dSMEM)[0] = GetDbStrLength(dbstrndx);
+        ((int*)dSMEM)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        if(NANOSS) ((int*)dSMEM)[8] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+    }
+    if((CUSF_TBSP_INDEX_SCORE_XDIM <= lWarpsize && threadIdx.x == 1) ||
+       (CUSF_TBSP_INDEX_SCORE_XDIM  > lWarpsize && threadIdx.x == lWarpsize)) {
+        ((int*)dSMEM)[2] = GetQueryLength(qryndx);
+        ((int*)dSMEM)[3] = qrydst = GetQueryDst(qryndx);
+        if(NANOSS) ((int*)dSMEM)[9] = GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst);
+    }
 
     __syncthreads();
 
@@ -534,32 +570,60 @@ void ProduceAlignmentUsingDynamicIndex2(
     //NOTE: no bank conflicts when accessing the same address;
     dbstrlen = ((int*)dSMEM)[0]; dbstrdst = ((int*)dSMEM)[1];
     qrylen = ((int*)dSMEM)[2]; qrydst = ((int*)dSMEM)[3];
+    if(NANOSS)
+        notusingss = SECSTRFILT && (
+                    (GetMoleculeType(((int*)dSMEM)[8]) != gtmtProtein) ||
+                    (GetMoleculeType(((int*)dSMEM)[9]) != gtmtProtein));
 
     __syncthreads();
 
-    if(qrylen < dbstrlen)
-        ProduceAlignmentUsingIndex2ReferenceHelper<SECSTRFILT>(
-            dSMEM, stacksize,
-            sfragfct, qryndx, dbstrndx,
-            qrylen, dbstrlen, qrydst, dbstrdst,
-            WRTNDX, (depth), nqystrs, ndbCstrs, ndbCposs,
-            maxnsteps, qryfragfct, rfnfragfct,
-            wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
-    else
-        ProduceAlignmentUsingIndex2QueryHelper<SECSTRFILT>(
-            dSMEM, stacksize,
-            sfragfct, qryndx, dbstrndx,
-            qrylen, dbstrlen, qrydst, dbstrdst,
-            WRTNDX, (depth), nqystrs, ndbCstrs, ndbCposs,
-            maxnsteps, qryfragfct, rfnfragfct,
-            wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
+    if(qrylen < dbstrlen) {
+        if(notusingss)
+            ProduceAlignmentUsingIndex2ReferenceHelper<0>(
+                dSMEM, stacksize,
+                sfragfct, qryndx, dbstrndx,
+                qrylen, dbstrlen, qrydst, dbstrdst,
+                WRTNDX, windowsize,
+                seedapproachstruct, (depth), nqystrs, ndbCstrs, ndbCposs,
+                maxnsteps, qryfragfct, rfnfragfct,
+                wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
+        else
+            ProduceAlignmentUsingIndex2ReferenceHelper<SECSTRFILT>(
+                dSMEM, stacksize,
+                sfragfct, qryndx, dbstrndx,
+                qrylen, dbstrlen, qrydst, dbstrdst,
+                WRTNDX, windowsize,
+                seedapproachstruct, (depth), nqystrs, ndbCstrs, ndbCposs,
+                maxnsteps, qryfragfct, rfnfragfct,
+                wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
+    } else {
+        if(notusingss)
+            ProduceAlignmentUsingIndex2QueryHelper<0>(
+                dSMEM, stacksize,
+                sfragfct, qryndx, dbstrndx,
+                qrylen, dbstrlen, qrydst, dbstrdst,
+                WRTNDX, windowsize,
+                seedapproachstruct, (depth), nqystrs, ndbCstrs, ndbCposs,
+                maxnsteps, qryfragfct, rfnfragfct,
+                wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
+        else
+            ProduceAlignmentUsingIndex2QueryHelper<SECSTRFILT>(
+                dSMEM, stacksize,
+                sfragfct, qryndx, dbstrndx,
+                qrylen, dbstrlen, qrydst, dbstrdst,
+                WRTNDX, windowsize,
+                seedapproachstruct, (depth), nqystrs, ndbCstrs, ndbCposs,
+                maxnsteps, qryfragfct, rfnfragfct,
+                wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
+    }
 }
 
 // Instantiations
 // 
-#define INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(tpSECSTRFILT) \
-    template __global__ void ProduceAlignmentUsingDynamicIndex2<tpSECSTRFILT>( \
-        const int stacksize, const bool WRTNDX, const int depth, const uint nqystrs, \
+#define INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(tpSECSTRFILT,tpNANOSS) \
+    template __global__ void ProduceAlignmentUsingDynamicIndex2<tpSECSTRFILT,tpNANOSS>( \
+        const int stacksize, const bool WRTNDX, const int windowsize, \
+        const int seedapproachstruct, const int depth, const uint nqystrs, \
         const uint ndbCstrs, const uint ndbCposs, const uint maxnsteps, \
         const int qryfragfct, const int rfnfragfct, \
         const float* __restrict__ wrkmemtm, \
@@ -567,8 +631,8 @@ void ProduceAlignmentUsingDynamicIndex2(
         float* __restrict__ tmpdpdiagbuffers, \
         float* __restrict__ wrkmemaux);
 
-INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(0);
-INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(1);
+INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(0,0);
+INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(1,0);
 
 // -------------------------------------------------------------------------
 
@@ -583,6 +647,7 @@ INSTANTIATE_ProduceAlignmentUsingDynamicIndex2(1);
 // NOTE: thread block is 1D and processes reference fragment along structure
 // positions;
 // stacksize, dynamically determined stack size;
+// windowsize, window size in residues;
 // depth, superposition depth for calculating query and reference positions;
 // nqystrs, total number of queries;
 // ndbCstrs, total number of reference structures in the chunk;
@@ -599,6 +664,7 @@ template<int SECSTRFILT>
 __global__
 void PositionalCoordsFromIndexLinear2(
     const int stacksize,
+    const int windowsize,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -684,7 +750,7 @@ void PositionalCoordsFromIndexLinear2(
     //if fragment is out of bounds (tfm not calculated): all threads in the block exit
     if(qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen) return;
 
-    fraglen = myhdmin(qrylen, CUSF_TBSP_INDEX_SCORE_POSLIMIT2);
+    fraglen = myhdmin(qrylen, windowsize);
     //qrypos = myhdmax(0, qrypos - (fraglen>>1));
     rfnpos = myhdmax(0, rfnpos - (fraglen>>1));
     dbstrlen = myhdmin(dbstrlen, rfnpos + fraglen);
@@ -753,7 +819,7 @@ void PositionalCoordsFromIndexLinear2(
 // 
 #define INSTANTIATE_PositionalCoordsFromIndexLinear2(tpSECSTRFILT) \
     template __global__ void PositionalCoordsFromIndexLinear2<tpSECSTRFILT>( \
-        const int stacksize, const int depth, const uint nqystrs, \
+        const int stacksize, const int windowsize, const int depth, const uint nqystrs, \
         const uint ndbCstrs, const uint ndbCposs, const uint maxnsteps, \
         const int qryfragfct, const int rfnfragfct, int fragndx, \
         const float* __restrict__ wrkmemtm, \
@@ -773,6 +839,7 @@ INSTANTIATE_PositionalCoordsFromIndexLinear2(1);
 // NOTE: thread block is 2D and processes reference fragment along structure
 // positions;
 // complete, flag of complete alignment;
+// windowsize, window size in residues;
 // depth, superposition depth for calculating query and reference positions;
 // nqystrs, total number of queries;
 // ndbCstrs, total number of reference structures in the chunk;
@@ -788,6 +855,7 @@ INSTANTIATE_PositionalCoordsFromIndexLinear2(1);
 __global__
 void MakeAlignmentLinear2(
     const bool complete,
+    const int windowsize,
     const int depth,
     const uint nqystrs,
     const uint ndbCstrs,
@@ -856,7 +924,7 @@ void MakeAlignmentLinear2(
     //if fragment is out of bounds (tfm and scores not calculated): all threads exit
     if(qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen) return;
 
-    fraglen = myhdmin(qrylen, CUSF_TBSP_INDEX_SCORE_POSLIMIT2);
+    fraglen = myhdmin(qrylen, windowsize);
     //qrypos = myhdmax(0, qrypos - (fraglen>>1));
     rfnpos = myhdmax(0, rfnpos - (fraglen>>1));
     dbstrlen = myhdmin(dbstrlen, rfnpos + fraglen);

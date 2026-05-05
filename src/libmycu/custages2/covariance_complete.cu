@@ -59,6 +59,20 @@ void FindGaplessAlignedFragment(
     int qrypos, rfnpos;//const
 
 
+    if(threadIdx.x == 0) {
+        uint mloc0 = ((qryndx * maxnsteps + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
+        ccmCache[6] = wrkmemaux[mloc0 + dbstrndx];
+    }
+
+    __syncthreads();
+
+    if(((int)(ccmCache[6])) & (CONVERGED_LOWTMSC_bitval))
+        //(NOTE:convergence CONVERGED_LOWTMSC_bitval applies globally);
+        //all threads in the block exit;
+        return;
+
+    //NOTE: no sync as long ccmCache cell for convergence is not overwritten;
+
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
     if(threadIdx.x < 2) {

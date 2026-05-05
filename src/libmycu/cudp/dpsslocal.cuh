@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -15,6 +15,7 @@
 // ExecDPSSLocal3264x: execute dynamic programming for local alignment using
 // secondary structure information with 32(64)-fold unrolling along the 
 // diagonal of dimension CUDP_2DCACHE_DIM;
+template<int NASEQ = 0>
 __global__
 void ExecDPSSLocal3264x(
     const uint blkdiagnum,

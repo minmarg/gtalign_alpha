@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -330,6 +330,7 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
     static const std::string preamb = "stagefrg3::stagefrg3_extensive_frg_swift: ";
 
     const int simthreshold = CLOptions::GetC_TRIGGER();
+    static const int seedapproachstruct = CLOptions::GetC_SeedRuleValue();
 
     //#iterations on alignment pairs to perform excluding the
     //initial (tfm) and final (score) kernels: 1, 2, or 3:
@@ -338,11 +339,12 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
     static const bool dynamicorientation = true;
     static const float thrsimilarityperc = (float)simthreshold / 100.0f;
     static const float thrscorefactor = 1.0f;
-    static const float locgapcost = -0.8f;
+    static const float locgapcost = CLOptions::GetC_GapCost();
 
     enum{nfrags = 2};//number of fragments of different length used
     static const int frags[nfrags] = {20, 100};
-    static const int fragndx = 1;//should be the longest!
+    // static const int fragndx = 1;//should be the longest!
+    static const int fragndx = seedapproachstruct? 0: 1;
     //int fraglen = GetNAlnPoss_frg(
     //        qystr1len, dbstr1len, 0/*qrypos,unsed*/, 0/*rfnpos,unused*/,
     //        0/*qryfragfct,unsed*/, 0/*rfnfragfct,unused*/, 0/*fraglen index*/);
@@ -386,7 +388,7 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
         (((dbstr1len + qystr1len) + CUDP_2DCACHE_DIM_X-1) / CUDP_2DCACHE_DIM_X);
     nblkdiags_ss += (uint)(qystr1len - 1) / CUDP_2DCACHE_DIM_D;
 
-    if(0.0f < thrsimilarityperc) {
+    if(0.0f < thrsimilarityperc || seedapproachstruct) {
         //launch blocks along block diagonals to perform DP;
         //nblkdiags_ss, total number of diagonals:
         for(uint d = 0; d < nblkdiags_ss; d++)
@@ -447,7 +449,8 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
     int ysndxproc = 0, xsndxproc = 0;//processed indices
 
     //there are fragment variants; divide max allowed accommodation by 2:
-    const uint maxnstepso2 = (maxnsteps >> 1);
+    const uint stepmult = seedapproachstruct? 0: 1;
+    const uint maxnstepso2 = (maxnsteps >> stepmult);
 
     for(int ysndx = 0; ysndx < nstepsy; ysndx++)
     {
@@ -472,7 +475,7 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
                 streamproc,
                 frags[fragndx],
                 ysndxproc, xsndxproc, fragndx,
-                maxnsteps, (stepnumber<<1),
+                maxnsteps, (stepnumber << stepmult),
                 qystr1len, dbstr1len,
                 nqystrs, ndbCstrs, ndbCposs, dbxpad,
                 tmpdpdiagbuffers, tmpdpalnpossbuffer, btckdata,
@@ -487,8 +490,9 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
                     (ysndxproc == 0 && xsndxproc == 0),//firstit
                     (depth <= CLOptions::csdDeep),//twoconfs,
                     (xsndxproc),//rfnfragfctinit
-                    ndbCstrs, maxnsteps, (stepnumber<<1)/*effnsteps*/,
-                    wrkmemtmibest/*in*/, wrkmemtm/*out*/, wrkmemaux);
+                    ndbCstrs, maxnsteps, (stepnumber << stepmult)/*effnsteps*/,
+                    wrkmemtmibest/*in*/, wrkmemtm/*out*/, wrkmemaux,
+                    seedapproachstruct);
                 MYCUDACHECKLAST;
             }
 
@@ -687,6 +691,7 @@ void stagefrg3::stagefrg3_score_based_on_fragmatching3_helper(
     float* __restrict__ wrkmem2,
     float* __restrict__ wrkmemtm)
 {
+    static const int windowsize = CLOptions::GetC_WINDOW();
     //max #aligned positions over the pairs in a chunk
     //int minlenmax = myhdmin(qystr1len, dbstr1len);
     //alignment length can be >min due to the linear algorithm:
@@ -760,8 +765,7 @@ void stagefrg3::stagefrg3_score_based_on_fragmatching3_helper(
     //block processes CUSF_TBSP_INDEX_SCORE_XDIMLGL positions of one query-reference pair:
     //NOTE: ndbCstrs and nqystrs cannot be greater than 65535: ensured by JobDispatcher
     dim3 nthrds_linscos(CUSF_TBSP_INDEX_SCORE_XDIM,1,1);
-    dim3 nblcks_linscos(
-        (myhdmin((uint)CUSF_TBSP_INDEX_SCORE_POSLIMIT2, dbstr1len) +
+    dim3 nblcks_linscos((myhdmin((uint)windowsize, dbstr1len) +
             CUSF_TBSP_INDEX_SCORE_XDIMLGL - 1)/CUSF_TBSP_INDEX_SCORE_XDIMLGL,
         ndbCstrs, nqystrs * actualnsteps);
 
@@ -789,8 +793,7 @@ void stagefrg3::stagefrg3_score_based_on_fragmatching3_helper(
     //execution configuration for linearly drawing alignment (calculated before):
     //block processes CUSF2_TBSP_INDEX_ALIGNMENT_XDIMLGL positions of one query-reference pair:
     dim3 nthrds_linalign(CUSF2_TBSP_INDEX_ALIGNMENT_XDIM,CUSF2_TBSP_INDEX_ALIGNMENT_YDIM,1);
-    dim3 nblcks_linalign(
-        (myhdmin((uint)CUSF_TBSP_INDEX_SCORE_POSLIMIT2, dbstr1len) +
+    dim3 nblcks_linalign((myhdmin((uint)windowsize, dbstr1len) +
             CUSF2_TBSP_INDEX_ALIGNMENT_XDIMLGL - 1)/CUSF2_TBSP_INDEX_ALIGNMENT_XDIMLGL,
         ndbCstrs, nqystrs * actualnsteps);
 
@@ -836,7 +839,7 @@ void stagefrg3::stagefrg3_score_based_on_fragmatching3_helper(
         thrscorefactor,
         streamproc,
         qryfragfct, rfnfragfct, fragndx,
-        maxnsteps,
+        maxnsteps, actualnsteps,
         nqystrs, ndbCstrs, ndbCposs, dbxpad,
         dpscoremtx, wrkmem, wrkmemaux, wrkmem2, wrkmemtm,
         nblcks_init, nthrds_init,
@@ -931,7 +934,7 @@ void stagefrg3::stagefrg3_fragmatching3_Initial1(
     const float /* thrscorefactor */,
     cudaStream_t streamproc,
     const int qryfragfct, const int rfnfragfct, const int fragndx,
-    const uint maxnsteps,
+    const uint maxnsteps, const uint actualnsteps,
     const uint nqystrs, const uint ndbCstrs,
     const uint ndbCposs, const uint dbxpad,
     const char* __restrict__ dpscoremtx,
@@ -948,11 +951,17 @@ void stagefrg3::stagefrg3_fragmatching3_Initial1(
     const dim3& /* nblcks_simeval */, const dim3& /* nthrds_simeval */,
     const dim3& nblcks_tfm, const dim3& nthrds_tfm)
 {
-    const int depth = CLOptions::GetC_DEPTH();
+    static const int depth = CLOptions::GetC_DEPTH();
+    static const int seedapproachstruct = CLOptions::GetC_SeedRuleValue();
+
+    //execution configuration for reduction:
+    dim3 nthrds_ccmtx_aln(CUS1_TBINITSP_CCMCALC_XDIM,1,1);
+    // dim3 nthrds_ccmtx_aln(CUSF_TBSP_INITIAL_ALN_CCM_XDIM,CUSF_TBSP_INITIAL_ALN_CCM_YDIM,1);
+    dim3 nblcks_ccmtx_aln(ndbCstrs, actualnsteps, nqystrs);
 
     //NOTE: when thrsimilarityperc<=0, the convergence flag is distributed:
     CalcLocalSimilarity2_frg2<<<nblcks_locsim,nthrds_locsim,0,streamproc>>>(
-        thrsimilarityperc,
+        thrsimilarityperc, seedapproachstruct,
         (depth), ndbCstrs, ndbCposs, dbxpad, maxnsteps,
         qryfragfct, rfnfragfct, fragndx,
         dpscoremtx, wrkmemaux);
@@ -966,17 +975,28 @@ void stagefrg3::stagefrg3_fragmatching3_Initial1(
     MYCUDACHECKLAST;
 
     //calculate cross-covariance matrices with unrolling
-    CalcCCMatrices64_frg2<<<nblcks_ccmtx_frg,nthrds_ccmtx_frg,0,streamproc>>>(
-        (depth),  nqystrs, ndbCstrs,  maxnsteps, qryfragfct, rfnfragfct, fragndx,
-        wrkmemaux, wrkmem);
+    if(seedapproachstruct) {
+        CalcCCMatrices64LocallyAligned64<<<nblcks_ccmtx_aln,nthrds_ccmtx_aln,0,streamproc>>>(
+            seedapproachstruct, (depth), (thrsimilarityperc), ndbCstrs, ndbCposs, dbxpad, maxnsteps,
+            qryfragfct, rfnfragfct, dpscoremtx, wrkmemaux, wrkmem);
+    } else {
+        CalcCCMatrices64_frg2<<<nblcks_ccmtx_frg,nthrds_ccmtx_frg,0,streamproc>>>(
+            (depth),  nqystrs, ndbCstrs,  maxnsteps, qryfragfct, rfnfragfct, fragndx,
+            wrkmemaux, wrkmem);
+    }
     MYCUDACHECKLAST;
 
     //copy CC data to section 2 of working memory to enable efficient 
-    //structure-specific calculation; READNPOS_NOREAD, do not verify whether
-    //#positions on which tfms are calculated has changed:
-    CopyCCDataToWrkMem2_frg2<<<nblcks_copyto,nthrds_copyto,0,streamproc>>>(
-        (depth),  ndbCstrs,  maxnsteps, qryfragfct, rfnfragfct, fragndx,
-        wrkmemaux, wrkmem/*in*/, wrkmem2/*out*/);
+    //structure-specific calculation:
+    if(seedapproachstruct) {
+        CopyCCDataToWrkMem2_frg2<READNPOS_READ><<<nblcks_copyto,nthrds_copyto,0,streamproc>>>(
+            seedapproachstruct, (depth),  ndbCstrs,  maxnsteps, qryfragfct, rfnfragfct, fragndx,
+            wrkmemaux, wrkmem/*in*/, wrkmem2/*out*/);
+    } else {
+        CopyCCDataToWrkMem2_frg2<READNPOS_NOREAD><<<nblcks_copyto,nthrds_copyto,0,streamproc>>>(
+            seedapproachstruct, (depth),  ndbCstrs,  maxnsteps, qryfragfct, rfnfragfct, fragndx,
+            wrkmemaux, wrkmem/*in*/, wrkmem2/*out*/);
+    }
     MYCUDACHECKLAST;
 
     if(dynamicorientation)
@@ -1024,22 +1044,26 @@ void stagefrg3::stagefrg3_fragmatching3_alignment2(
     float* __restrict__ wrkmemtm,
     //
     const dim3& nblcks_linscos, const dim3& nthrds_linscos,
-        const uint szdsmem_linscos, const uint stacksize_linscos,
+    const uint szdsmem_linscos, const uint stacksize_linscos,
     const dim3& nblcks_linalign, const dim3& nthrds_linalign)
 {
-    const int depth = CLOptions::GetC_DEPTH();
+    static const int depth = CLOptions::GetC_DEPTH();
+    static const int seedapproachstruct = CLOptions::GetC_SeedRuleValue();
+    static const int windowsize = CLOptions::GetC_WINDOW();
 
     if(dynamicorientation) {
         if(secstrmatchaln)
             ProduceAlignmentUsingDynamicIndex2<1/*SECSTRFILT*/>
                 <<<nblcks_linscos,nthrds_linscos,szdsmem_linscos,streamproc>>>(
-                    (int)stacksize_linscos, writeqrypss, (depth),
+                    (int)stacksize_linscos, writeqrypss, windowsize,
+                    seedapproachstruct, (depth),
                     nqystrs, ndbCstrs, ndbCposs,  maxnsteps,  qryfragfct, rfnfragfct,
                     wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
         else
             ProduceAlignmentUsingDynamicIndex2<0/*SECSTRFILT*/>
                 <<<nblcks_linscos,nthrds_linscos,szdsmem_linscos,streamproc>>>(
-                    (int)stacksize_linscos, writeqrypss, (depth),
+                    (int)stacksize_linscos, writeqrypss, windowsize,
+                    seedapproachstruct, (depth),
                     nqystrs, ndbCstrs, ndbCposs,  maxnsteps,  qryfragfct, rfnfragfct,
                     wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
         MYCUDACHECKLAST;
@@ -1048,13 +1072,13 @@ void stagefrg3::stagefrg3_fragmatching3_alignment2(
         if(secstrmatchaln)
             ProduceAlignmentUsingIndex2<1/*SECSTRFILT*/>
                 <<<nblcks_linscos,nthrds_linscos,szdsmem_linscos,streamproc>>>(
-                    (int)stacksize_linscos, writeqrypss, (depth),
+                    (int)stacksize_linscos, writeqrypss, windowsize, (depth),
                     nqystrs, ndbCstrs, ndbCposs,  maxnsteps,  qryfragfct, rfnfragfct,
                     wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
         else
             ProduceAlignmentUsingIndex2<0/*SECSTRFILT*/>
                 <<<nblcks_linscos,nthrds_linscos,szdsmem_linscos,streamproc>>>(
-                    (int)stacksize_linscos, writeqrypss, (depth),
+                    (int)stacksize_linscos, writeqrypss, windowsize, (depth),
                     nqystrs, ndbCstrs, ndbCposs,  maxnsteps,  qryfragfct, rfnfragfct,
                     wrkmemtm, tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
         MYCUDACHECKLAST;
@@ -1063,14 +1087,14 @@ void stagefrg3::stagefrg3_fragmatching3_alignment2(
         if(secstrmatchaln)
             PositionalCoordsFromIndexLinear2<1/*SECSTRFILT*/>
                 <<<nblcks_linscos,nthrds_linscos,szdsmem_linscos,streamproc>>>(
-                    (int)stacksize_linscos, (depth),
+                    (int)stacksize_linscos, windowsize, (depth),
                     nqystrs, ndbCstrs, ndbCposs,  maxnsteps,
                     qryfragfct, rfnfragfct, fragndx,
                     wrkmemtm, wrkmemaux, tmpdpalnpossbuffer);
         else
             PositionalCoordsFromIndexLinear2<0/*SECSTRFILT*/>
                 <<<nblcks_linscos,nthrds_linscos,szdsmem_linscos,streamproc>>>(
-                    (int)stacksize_linscos, (depth),
+                    (int)stacksize_linscos, windowsize, (depth),
                     nqystrs, ndbCstrs, ndbCposs,  maxnsteps,
                     qryfragfct, rfnfragfct, fragndx,
                     wrkmemtm, wrkmemaux, tmpdpalnpossbuffer);
@@ -1078,7 +1102,7 @@ void stagefrg3::stagefrg3_fragmatching3_alignment2(
 
         //draw alignment based on best-matching atom pairs
         MakeAlignmentLinear2<<<nblcks_linalign,nthrds_linalign,0,streamproc>>>(
-                complete, (depth), nqystrs, ndbCstrs, ndbCposs,  maxnsteps,
+                complete, windowsize, (depth), nqystrs, ndbCstrs, ndbCposs,  maxnsteps,
                 qryfragfct, rfnfragfct, fragndx,
                 tmpdpalnpossbuffer, tmpdpdiagbuffers, wrkmemaux);
         MYCUDACHECKLAST;

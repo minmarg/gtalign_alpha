@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -84,6 +84,25 @@ __global__ void InitCCData(
     float* __restrict__ wrkmem,
     float* __restrict__ wrkmemaux
 );
+
+
+// -------------------------------------------------------------------------
+// CalcCCMatrices64LocallyAligned64: calculate cross-covariance matrix between
+// query and reference based on local structural alignment;
+__global__ void CalcCCMatrices64LocallyAligned64(
+    int seedapproachstruct,
+    const int depth,
+    const float trigger,
+    const uint ndbCstrs,
+    const uint ndbCposs,
+    const uint dbxpad,
+    const uint maxnsteps,
+    int qryfragfct, int rfnfragfct,
+    const char* __restrict__ dpscoremtx,
+    float* __restrict__ wrkmemaux,
+    float* __restrict__ wrkmem
+);
+// -------------------------------------------------------------------------
 
 
 // CalcCCMatrices: calculate cross-covariance matrix between the query and 
@@ -200,7 +219,9 @@ __global__ void CopyCCDataToWrkMem2_frgbest(
 // CopyCCDataToWrkMem2_frg2: includes determining the out-of-bounds 
 // condition when the fragment length and position depends on structure 
 // lengths; more extensive parallelization;
+template<int READNPOS>
 __global__ void CopyCCDataToWrkMem2_frg2(
+    const int seedapproachstruct,
     const int depth,
     const uint ndbCstrs,
     const uint maxnsteps,
@@ -237,7 +258,7 @@ void GetQryRfnPos(
     const int /*depth*/,
     int& qrypos, int& rfnpos,
     int /*qrylen*/, int /*dbstrlen*/,
-    uint sfragfct, int arg1, int arg2, int /*arg3*/)
+    uint sfragfct, int arg1, int arg2, int /*arg3*/, int /*dummy*/ = 0)
 {
     arg1/*n1*/ += sfragfct * arg2/*step*/;
     qrypos = myhdmax(0,arg1/*n1*/);
@@ -251,7 +272,7 @@ __device__ __forceinline__
 bool PositionsOutofBounds(
     int& qrylen, int& dbstrlen,
     int qrypos, int rfnpos,
-    int /*arg1*/, int /*arg2*/, int /*arg3*/)
+    int /*arg1*/, int /*arg2*/, int /*arg3*/, int /*dummy*/ = 0)
 {
     int minlen = myhdmin(qrylen, dbstrlen);
     minlen = myhdmax(minlen >> 1, 5);
@@ -270,7 +291,7 @@ __device__ __forceinline__
 int GetNAlnPoss(
     int qrylen, int dbstrlen,
     int qrypos, int rfnpos,
-    int /*arg1*/, int /*arg2*/, int /*arg3*/)
+    int /*arg1*/, int /*arg2*/, int /*arg3*/, int /*dummy*/ = 0)
 {
     return myhdmin(qrylen-qrypos, dbstrlen-rfnpos);
 }
@@ -470,8 +491,10 @@ void GetQryRfnPos_frg2(
     const int depth,
     int& qrypos, int& rfnpos,
     int qrylen, int dbstrlen,
-    uint sfragfct, int /*arg1*/, int arg2, int /*arg3*/)
+    uint sfragfct, int /*arg1*/, int arg2, int /*arg3*/,
+    const int seedapproachstruct = 0)
 {
+    const int stepmult = seedapproachstruct? 0: 1;
     int qrystepsz = GetFragStepSize_frg_shallow(qrylen);
     int rfnstepsz = GetFragStepSize_frg_shallow(dbstrlen);
     if(depth == CLOptions::csdDeep) {
@@ -487,8 +510,8 @@ void GetQryRfnPos_frg2(
     //number of fragments along the reference structure:
     int nrfnfrgs = myhdmax(1, dbstrlen / rfnstepsz);
     //fragment factor for query:
-    int qryfragfct = (arg2 + (sfragfct>>1)) / nrfnfrgs;
-    int rfnfragfct = (arg2 + (sfragfct>>1)) - qryfragfct * nrfnfrgs;
+    int qryfragfct = (arg2 + (sfragfct >> stepmult)) / nrfnfrgs;
+    int rfnfragfct = (arg2 + (sfragfct >> stepmult)) - qryfragfct * nrfnfrgs;
     // NOTE: previous version with different qryfragfct and rfnfragfct journaling:
     // qrypos = (arg1 + qryfragfct) * qrystepsz;
     qrypos = (qryfragfct) * qrystepsz;
@@ -504,8 +527,11 @@ void GetQryRfnFct_frg2(
     const int depth,
     int* qryfragfct, int* rfnfragfct,
     int qrylen, int dbstrlen,
-    uint sfragfct, int arg2)
+    uint sfragfct, int arg2,
+    int* pqrystepsz = NULL, int* prfnstepsz = NULL,
+    const int seedapproachstruct = 0)
 {
+    const int stepmult = seedapproachstruct? 0: 1;
     int qrystepsz = GetFragStepSize_frg_shallow(qrylen);
     int rfnstepsz = GetFragStepSize_frg_shallow(dbstrlen);
     if(depth == CLOptions::csdDeep) {
@@ -521,8 +547,10 @@ void GetQryRfnFct_frg2(
     //number of fragments along the reference structure:
     int nrfnfrgs = myhdmax(1, (int)__fdividef(dbstrlen, rfnstepsz));
     //fragment factor for query:
-    *qryfragfct = __fdividef((arg2 + (sfragfct>>1)), nrfnfrgs);
-    *rfnfragfct = (arg2 + (sfragfct>>1)) - (*qryfragfct) * nrfnfrgs;
+    *qryfragfct = __fdividef((arg2 + (sfragfct >> stepmult)), nrfnfrgs);
+    *rfnfragfct = (arg2 + (sfragfct >> stepmult)) - (*qryfragfct) * nrfnfrgs;
+    if(pqrystepsz) *pqrystepsz = qrystepsz;
+    if(prfnstepsz) *prfnstepsz = rfnstepsz;
 }
 
 // -------------------------------------------------------------------------
@@ -536,17 +564,21 @@ __device__ __forceinline__
 bool PositionsOutofBounds_frg(
     int& qrylen, int& dbstrlen,
     int qrypos, int rfnpos,
-    int arg1, int arg2, int arg3)
+    int arg1, int arg2, int arg3,
+    const int seedapproachstruct = 0)
 {
     int fraglen = GetNAlnPoss_frg(
-            qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3);
+            qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3,
+            seedapproachstruct);
 
     if(qrylen - qrypos < fraglen ||
        dbstrlen - rfnpos < fraglen)
         return true;
 
-    qrylen = qrypos + fraglen;
-    dbstrlen = rfnpos + fraglen;
+    if(seedapproachstruct == 0) {
+        qrylen = qrypos + fraglen;
+        dbstrlen = rfnpos + fraglen;
+    }
 
     return false;
 }
@@ -604,7 +636,7 @@ bool PositionsOutofBounds_frgbest(
 // UpdateCCMCache: update cross-covariance cache data given query and 
 // reference coordinates, respectively;
 //
-template<int SMIDIM = twmvEndOfCCData>
+template<int SMIDIM = twmvEndOfCCData, int UPDATENPOS = 0>
 __device__ __forceinline__
 void UpdateCCMCache(
     FPTYPE* __restrict__ ccmCache,
@@ -630,6 +662,10 @@ void UpdateCCMCache(
     ccmCache[threadIdx.x * SMIDIM + twmvCVr_0] += rx;
     ccmCache[threadIdx.x * SMIDIM + twmvCVr_1] += ry;
     ccmCache[threadIdx.x * SMIDIM + twmvCVr_2] += rz;
+
+    //update the number of positions
+    if(SMIDIM == twmvEndOfCCDataExt && UPDATENPOS == 1)
+        ccmCache[threadIdx.x * SMIDIM + twmvNalnposs] += 1.0f;
 }
 
 // UpdateExtCCMCache: extension to UpdateCCMCache, where coordinate 
@@ -657,7 +693,7 @@ void UpdateExtCCMCache(
 // UpdateCCMOneAlnPos: update one position contributing to the 
 // cross-covariance matrix between the query and reference structures
 //
-template<int SMIDIM = twmvEndOfCCData>
+template<int SMIDIM = twmvEndOfCCData, int UPDATENPOS = 0>
 __device__ __forceinline__
 void UpdateCCMOneAlnPos(
     int qrypos,
@@ -672,7 +708,7 @@ void UpdateCCMOneAlnPos(
     float ry = GetDbStrCoord<pmv2DY>(rfnpos);
     float rz = GetDbStrCoord<pmv2DZ>(rfnpos);
 
-    UpdateCCMCache<SMIDIM>(ccmCache,  qx, qy, qz,  rx, ry, rz);
+    UpdateCCMCache<SMIDIM,UPDATENPOS>(ccmCache,  qx, qy, qz,  rx, ry, rz);
 }
 
 #endif//__covariance_h__

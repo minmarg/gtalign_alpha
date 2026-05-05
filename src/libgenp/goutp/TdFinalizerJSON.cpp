@@ -117,6 +117,10 @@ void TdFinalizer::CompressResultsJSON()
             //the structure has not been processed due to GPU memory restrictions
             continue;
 
+        int dbsttype = (int)GetDbStructureField<INTYPE>(dbstr2dst, pmv2D_Ins_Ch_Ord);
+        dbsttype = GetMoleculeType(dbsttype);
+        const char* dbsttypestr = GetMoleculeTypeStr(dbsttype);
+
         //save the addresses of the annotations and alignment records
         srtindxs_->push_back(sernr++);
         scores_->push_back(tmscore);
@@ -143,8 +147,9 @@ void TdFinalizer::CompressResultsJSON()
         written = sprintf(outptr,
                 "      \"query_length\": %d,%s"
                 "      \"reference_length\": %d,%s"
+                "      \"alignment_type\": \"%s\",%s"
                 "      \"alignment\": {%s",
-                qrystrlen_, NL, dbstrlen, NL,NL);
+                qrystrlen_, NL, dbstrlen, NL, dbsttypestr, NL,NL);
         outptr += written;
 
         FormatScoresJSON(outptr, strndx, alnlen);

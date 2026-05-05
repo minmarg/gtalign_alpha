@@ -876,12 +876,15 @@ void MpStageFin::ProductionSaveBestScoresAndTMAmongBests(
     float* const __RESTRICT__ tfmmem)
 {
     //NOTE: lnxN <= dp2oadScoreQ and nTDP2OutputAlnData <= #ccm assumed!
-    enum {lnxSCR, lnxNDX, lnxLEN, lnxGRD, lnxN};
+    enum {lnxSCR, lnxNDX, lnxLEN, lnxGRD, lnxTPE, lnxN};
 
     const int istr0 = rfnblkndx * XDIM;
     const int istre = mymin(istr0 + XDIM, (int)ndbCstrs);
 
     const int qrylen = PMBatchStrData::GetLengthAt(querypmbeg, qryndx);
+    const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qryndx);
+    const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+    const int typeqry = GetMoleculeType(typexq);
 
     //initialize cache for best scores and their indices:
     #pragma omp simd collapse(2)
@@ -895,6 +898,14 @@ void MpStageFin::ProductionSaveBestScoresAndTMAmongBests(
     for(int ri = istr0; ri < istre; ri++) {
         int ii = ri - istr0;
         ccm[lnxLEN][ii] = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
+    }
+
+    #pragma omp simd aligned(bdbCpmbeg:DATALN)
+    for(int ri = istr0; ri < istre; ri++) {
+        int ii = ri - istr0;
+        const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+        const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+        ccm[lnxTPE][ii] = GetMoleculeType(typexr);
     }
 
     for(int si = 0; si < effnsteps; si++) {
@@ -912,7 +923,7 @@ void MpStageFin::ProductionSaveBestScoresAndTMAmongBests(
     }
 
     bool wrtgrand = 0;
-    const float d0Q = GetD0fin(qrylen, qrylen);//threshold for query
+    const float d0Q = GetD0fin(qrylen, qrylen, typeqry);//threshold for query
 
     //ccm[0][...] contains maximums; write max values to slot 0
     #pragma omp simd aligned(wrkmemaux:DATALN)
@@ -931,7 +942,7 @@ void MpStageFin::ProductionSaveBestScoresAndTMAmongBests(
             wrkmemaux[mloc0 + tawmvGrandBest * ndbCstrs + ri/*dbstrndx*/] = bscore;
             //score calculated for the longer structure:
             float gbest = wrkmemaux[mloc + tawmvBest0 * ndbCstrs + ri/*dbstrndx*/];
-            const float d0R = GetD0fin(ccm[lnxLEN][ii], ccm[lnxLEN][ii]);//threshold for reference
+            const float d0R = GetD0fin(ccm[lnxLEN][ii], ccm[lnxLEN][ii], ccm[lnxTPE][ii]);//threshold for reference
             //make bscore (should not be used below associated clauses) represent the query score:
             if(ccm[lnxLEN][ii] < (float)qrylen) myswap(bscore, gbest);
             //write alignment information in cache:

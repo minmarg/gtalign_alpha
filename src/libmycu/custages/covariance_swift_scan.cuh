@@ -350,7 +350,7 @@ float FindMax_SWFTProgressive(
 
     //per-warp-reduce for max (for tid:tid%32==0):
     max = mywarpreducemax(max);
-    if((threadIdx.x & 31) == 0) tmpSMbuf[threadIdx.x>>5] = max;
+    if((threadIdx.x & 31) == 0) tmpSMbuf[threadIdx.x>>llog2warpsize] = max;
     __syncthreads();
 
     //NOTE: assuming nwrpsdim<=32!

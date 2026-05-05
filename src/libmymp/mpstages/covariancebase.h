@@ -93,18 +93,21 @@ __HDINLINE__
 int GetNAlnPoss_frg(
     int qrylen, int dbstrlen,
     int /*qrypos*/, int /*rfnpos*/,
-    int /*arg1*/, int /*arg2*/, int arg3)
+    int /*arg1*/, int /*arg2*/, int arg3,
+    const int seedapproachstruct = 0)
 {
-    int minlen = myhdmin(qrylen, dbstrlen);
+    const int minlen = myhdmin(qrylen, dbstrlen);
+    const int minleno2 = (minlen >> 1);
+
+    if(seedapproachstruct) return myhdmin(seedapproachstruct/*64/128*/, minleno2);
 
     if(arg3 == 0) {
         int leno3 = myhdmax(1, (int)((float)minlen * oneTHIRDf));
-        return (leno3 < 20)? leno3: 20;
+        return myhdmin(20, leno3);
     }
 
     // arg3 == 1
-    int leno2 = (minlen >> 1);
-    return (leno2 < 100)? leno2: 100;
+    return myhdmin(100, minleno2);
 }
 
 // -------------------------------------------------------------------------

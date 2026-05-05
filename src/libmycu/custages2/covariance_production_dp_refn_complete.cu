@@ -101,10 +101,11 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase1(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+        ((int*)ccmCache)[2] = GetQueryLength(qryndx);
     }
 
     //NOTE: use a different warp for structure-specific-formatted data;
@@ -127,6 +128,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase1(
     sfragpos = sfragfct * sfragstep;
     dbstrlenorg = ((int*)ccmCache)[0];
     qrylenorg = ((int*)ccmCache)[2];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -143,7 +145,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase1(
 
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
     float dst32 = CP_LARGEDST;
@@ -219,7 +221,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase1(
     //calculate the score for the larger structure of the two:
     //threshold calculated for the greater length
     const int greaterlen = myhdmax(qrylenorg, dbstrlenorg);
-    const float g0 = GetD0fin(greaterlen, greaterlen);
+    const float g0 = GetD0fin(greaterlen, greaterlen, type);
     const float g02 = SQRD(g0);
     float gbest = best;//score calculated for the other structure
 
@@ -433,12 +435,12 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
     //NOTE: no sync as long ccmCache cell for convergence is not overwritten;
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+        ((int*)ccmCache)[2] = GetQueryLength(qryndx);
     }
 
     //NOTE: use a different warp for structure-specific-formatted data;
@@ -465,6 +467,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
     // sfragndx = (int)(ccmCache[tawmvSubFragNdx]);
     dbstrlenorg = ((int*)ccmCache)[0];
     qrylenorg = ((int*)ccmCache)[2];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -482,7 +485,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
 
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
     float best = -1.0f;//best score obtained
@@ -501,7 +504,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
     //calculate the score for the larger structure of the two:
     //threshold calculated for the greater length
     const int greaterlen = myhdmax(qrylenorg, dbstrlenorg);
-    const float g0 = GetD0fin(greaterlen, greaterlen);
+    const float g0 = GetD0fin(greaterlen, greaterlen, type);
     const float g02 = SQRD(g0);
     float gbest = best;//score calculated for the other structure
 
@@ -615,12 +618,12 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2(
     //NOTE: no sync as long ccmCache cell for convergence is not overwritten;
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+        ((int*)ccmCache)[2] = GetQueryLength(qryndx);
     }
 
     //NOTE: use a different warp for structure-specific-formatted data;
@@ -648,6 +651,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2(
     if(sfragndx == 0) sfragndx++;
     dbstrlenorg = ((int*)ccmCache)[0];
     qrylenorg = ((int*)ccmCache)[2];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -665,7 +669,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2(
 
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
     float best = -1.0f;//best score obtained
@@ -684,7 +688,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2(
     //calculate the score for the larger structure of the two:
     //threshold calculated for the greater length
     const int greaterlen = myhdmax(qrylenorg, dbstrlenorg);
-    const float g0 = GetD0fin(greaterlen, greaterlen);
+    const float g0 = GetD0fin(greaterlen, greaterlen, type);
     const float g02 = SQRD(g0);
     float gbest = best;//score calculated for the other structure
 
@@ -802,12 +806,12 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearch(
     //NOTE: no sync as long ccmCache cell for convergence is not overwritten;
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache + tmpcslot);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + tmpcslot + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[tmpcslot+2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[tmpcslot+0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[tmpcslot+1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[tmpcslot+4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+        ((int*)ccmCache)[tmpcslot+2] = GetQueryLength(qryndx);
     }
 
     //NOTE: use a different warp for structure-specific-formatted data;
@@ -835,6 +839,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearch(
     int sfragposorg = (int)(ccmCache[tawmvSubFragPos]);
     dbstrlenorg = ((int*)ccmCache)[tmpcslot+0];
     qrylenorg = ((int*)ccmCache)[tmpcslot+2];
+    const int type = GetMoleculeType(((int*)ccmCache)[tmpcslot+4]);
 
     float bestorg = ccmCache[tawmvGrandBest];//best score obtained
     float best = bestorg;
@@ -842,7 +847,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearch(
     __syncthreads();
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
 
@@ -884,7 +889,7 @@ void ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearch(
     //calculate the score for the larger structure of the two:
     //threshold calculated for the greater length
     const int greaterlen = myhdmax(qrylenorg, dbstrlenorg);
-    const float g0 = GetD0fin(greaterlen, greaterlen);
+    const float g0 = GetD0fin(greaterlen, greaterlen, type);
     const float g02 = SQRD(g0);
     float gbest = best;//score calculated for the other structure
 

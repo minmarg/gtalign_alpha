@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -12,6 +12,7 @@
 #include <string>
 
 #include "mybase.h"
+#include "libgenp/gdats/PM2DVectorFields.h"
 #include "CLOptions.h"
 
 using namespace CLOptions;
@@ -47,16 +48,18 @@ CLDEFINEASSIGNMENT( O_NO_DELETIONS, int, 0, value==0 || value==1, --no-deletions
 CLDEFINEASSIGNMENT( O_REFERENCED, int, 0, value==0 || value==1, --referenced);
 CLDEFINEASSIGNMENT( O_OUTFMT, int, 0, value>=0 && value<oofnOOutputFormat, --outfmt);
 CLDEFINEASSIGNMENT( I_INFMT, int, 0, value>=0 && value<iifnIInputFormat, --infmt);
-CLDEFINEASSIGNMENT( I_ATOM_PROT, std::string, " CA ", 1, --atom);
-CLDEFINEASSIGNMENT( I_ATOM_RNA, std::string, " C3'", 1, --atom);
-CLDEFINEASSIGNMENT( I_ATOM_PROT_trimmed, std::string, "CA", 1, nooption);
-CLDEFINEASSIGNMENT( I_ATOM_RNA_trimmed, std::string, "C3'", 1, nooption);
+CLDEFINEASSIGNMENT( I_AATOM, std::string, " CA ", 1, --aatom);
+CLDEFINEASSIGNMENT( I_NATOM, std::string, " C3'", 1, --natom);
+CLDEFINEASSIGNMENT( I_AATOM_trimmed, std::string, "CA", 1, nooption);
+CLDEFINEASSIGNMENT( I_NATOM_trimmed, std::string, "C3'", 1, nooption);
+CLDEFINEASSIGNMENT( I_NATOM_type, int, gtnaatC3p, value>=0 && value<gtnaatNAtomTypes, nooption);
 CLDEFINEASSIGNMENT( I_HETATM, int, 0, value==0 || value==1, --hetatm);
-CLDEFINEASSIGNMENT( I_TER, int, 3, value>=0 && value<istnIStructTerminator, --ter);
-CLDEFINEASSIGNMENT( I_SPLIT, int, 0, value>=0 && value<issanIStructSplitApproach, --split);
+CLDEFINEASSIGNMENT( I_MOL, int, imtDetermined, value>=0 && value<imtnIStructType, --mol);
+CLDEFINEASSIGNMENT( I_TER, int, istTER_ENDorChain, value>=0 && value<istnIStructTerminator, --ter);
+CLDEFINEASSIGNMENT( I_SPLIT, int, issaNoSplit, value>=0 && value<issanIStructSplitApproach, --split);
 CLDEFINEASSIGNMENT( I_SUPERP, int, 0, value>=0 && value<iaanIAlnAlgorithm, --superp);
 CLDEFINEASSIGNMENT( P_PRE_SIMILARITY, float, 0.0f, value>=0.0f, --pre-pre-similarity);
-CLDEFINEASSIGNMENT( P_PRE_SCORE, float, 0.3f, value>=0.0f && value<1.0f, --pre-score);
+CLDEFINEASSIGNMENT( P_PRE_SCORE, float, 0.4f, value>=0.0f && value<1.0f, --pre-score);
 CLDEFINEASSIGNMENT( C_Il, std::string, "", 1, -i);
 CLDEFINEASSIGNMENT( C_Iu, std::string, "", 1, -I);
 CLDEFINEASSIGNMENT( C_D0, float, 0.0f, value>0.0f && value<50.0f, --d0);
@@ -64,18 +67,24 @@ CLDEFINEASSIGNMENT( C_U, int, 0, value>0, -u);
 CLDEFINEASSIGNMENT( C_A, int, 0, value>=0 && value<csnnCScoreNormalization, -a);
 CLDEFINEASSIGNMENT( C_SYMMETRIC, int, 0, value==0 || value==1, --symmetric);
 CLDEFINEASSIGNMENT( C_REFINEMENT, int, csrOneSearch, value>=0 && value<csrnCSuperpRefinement, --refinement);
-CLDEFINEASSIGNMENT( C_DEPTH, int, csdMedium, value>=0 && value<csdnCSuperpDepth, --depth);
-CLDEFINEASSIGNMENT( C_TRIGGER, int, 50, value>=0 && value<=100, --trigger);
-CLDEFINEASSIGNMENT( C_NBRANCHES, int, 5, value>=3 && value<=16, --nbranches);
+CLDEFINEASSIGNMENT( C_DEPTH, int, csdDepthDefault, value>=0 && value<csdnCSuperpDepth, --depth);
+CLDEFINEASSIGNMENT( C_GAPCOST, int, csgcGapCostDefault, value>=0 && value<csgcnCSuperpGapCost, --gapcost);
+CLDEFINEASSIGNMENT( C_TRIGGER, int, cstTriggerDefault, value>=0 && value<=100, --trigger);
+CLDEFINEASSIGNMENT( C_SEEDRULE, int, cssrSuperpSeedRuleDefault, value>=0 && value<cssrnCSuperpSeedRule, --seedrule);
+CLDEFINEASSIGNMENT( C_WINDOW, int, DEF_WINDOW_SIZE, value>=MIN_WINDOW_SIZE && value<=MAX_WINDOW_SIZE, --window);
+CLDEFINEASSIGNMENT( C_NBRANCHES, int, csnNbranchesDefault, value>=1 && value<=16, --nbranches);
 CLDEFINEASSIGNMENT( C_ADDSEARCHBYSS, int, 0, value==0 || value==1, --add-search-by-ss);
 CLDEFINEASSIGNMENT( C_NODETAILEDSEARCH, int, 0, value==0 || value==1, --no-detailed-search);
 CLDEFINEASSIGNMENT( C_CONVERGENCE, int, 18, value>=1 && value<=30, --convergence);
-CLDEFINEASSIGNMENT( C_SPEED, int, 8, value>=0 && value<=13, --speed);
+CLDEFINEASSIGNMENT( C_SPEED, int, 9, value>=0 && value<=13, --speed);
 CLDEFINEASSIGNMENT( C_CP, int, 0, value==0 || value==1, --cp);
 CLDEFINEASSIGNMENT( C_MIRROR, int, 0, value==0 || value==1, --mirror);
+//Hidden (if any):
+CLDEFINEASSIGNMENT( H_N_SPATIAL_ITERATIONS, int, 2, value>=1 && value<=2, --n-spatial-iterations);
 //
 CLDEFINEASSIGNMENT( CPU_THREADS_READING, int, 10, value>=1 && value<=64, --cpu-threads-reading)
-CLDEFINEASSIGNMENT( CPU_THREADS, int, 1, value>=1 && value<=1024, --cpu-threads)
+// NOTE: 256: out-of-bounds condition for wrkmemtmibest in MpStageFrg3::Save2ndryScoreAndTM_Complete:
+CLDEFINEASSIGNMENT( CPU_THREADS, int, 1, value>=1 && value<=256, --cpu-threads)
 CLDEFINEASSIGNMENT( DEV_QRS_PER_CHUNK, int, 2, value>=1 && value<=100, --dev-queries-per-chunk)
 CLDEFINEASSIGNMENT( DEV_QRES_PER_CHUNK, int, 4000, value>=100 && value<=50000, --dev-queries-total-length-per-chunk)
 CLDEFINEASSIGNMENT( DEV_MAXRLEN, int, 4000, value>=100 && value<=65535, --dev-max-length)

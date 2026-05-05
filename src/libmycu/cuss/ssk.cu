@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -33,6 +33,7 @@ void CalcSecStrs()
 {
     // blockIdx.x is the block index of positions;
     // blockIdx.y is the serial number of query or reference structure;
+    const int strndx = blockIdx.y;
     enum{   nMRG0 = 2,//margin from one end
             nMRG2 = 4,//total margin: two from both ends
             nMAXPOS = CUSS_CALCSTR_XDIM + nMRG2//#max positions in the cache
@@ -50,10 +51,21 @@ void CalcSecStrs()
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
+    if(threadIdx.x == 0) {
         if(STRUCTS == SSK_STRUCTS_QRIES)
-                GetQueryLenDst(blockIdx.y, (int*)(strCoords[0]));
-        else    GetDbStrLenDst(blockIdx.y, (int*)(strCoords[0]));
+                ((int*)(strCoords[0]))[0] =  GetQueryLength(strndx);
+        else    ((int*)(strCoords[0]))[0] =  GetDbStrLength(strndx);
+    }
+
+    if(threadIdx.x == 32) {//next warp
+        int strdst0;
+        if(STRUCTS == SSK_STRUCTS_QRIES) {
+            ((int*)(strCoords[0]))[1] = strdst0 = GetQueryDst(strndx);
+            ((int*)(strCoords[0]))[2] = GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(strdst0);
+        } else {
+            ((int*)(strCoords[0]))[1] = strdst0 = GetDbStrDst(strndx);
+            ((int*)(strCoords[0]))[2] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(strdst0);
+        }
     }
 
     __syncthreads();
@@ -61,6 +73,11 @@ void CalcSecStrs()
     //NOTE: no bank conflict when two threads from the same warp access the same address;
     strlen = ((int*)(strCoords[0]))[0];
     strdst = ((int*)(strCoords[0]))[1];
+
+    {
+        int type = ((int*)(strCoords[0]))[2];
+        if(GetMoleculeType(type) != gtmtProtein) return;
+    }
 
     __syncthreads();
 

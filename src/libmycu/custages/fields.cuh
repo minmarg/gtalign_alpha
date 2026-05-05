@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -30,6 +30,17 @@ __device__ __forceinline__
 void SetDbStrField(int dbstrndx, T value)
 {
     ((T*)(dc_pm2dvfields_[ndx_dbs_dc_pm2dvfields_+field]))[dbstrndx] = value;
+}
+
+
+
+// -------------------------------------------------------------------------
+// GetQueryStrField: get a field value of a given query structure;
+template<typename T, int field>
+__device__ __forceinline__
+T GetQueryStrField(int qrystrndx)
+{
+    return ((T*)(dc_pm2dvfields_[ndx_qrs_dc_pm2dvfields_+field]))[qrystrndx];
 }
 
 

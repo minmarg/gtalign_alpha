@@ -4,12 +4,13 @@
 
 # GTalign
 
-GTalign, a novel high-performance (HPC) protein structure alignment, 
-superposition and search method (with structure clustering ability)
+A high-performance, spatial-index-based tool for macromolecular structure search, 
+alignment, and clustering
+*Fast, accurate, scalable – for proteins, RNAs, DNAs*
 
 **You can also access GTalign through a [web service](https://github.com/minmarg/gtalign-web-backend)**
 
-**($\mathbb{\color{red}{NEW!}}$ Use [GTcomplex](https://github.com/minmarg/gtcomplex) to search and align macromolecular complexes)**
+**($\mathbb{\color{red}{NEW!}}$ Explore macromolecular complexes with [GTcomplex](https://github.com/minmarg/gtcomplex))**
 
 ## Features
 
@@ -23,7 +24,7 @@ superposition and search method (with structure clustering ability)
   *  Same executable for different architectures
   *  `>`1000x faster on a single GPU (Volta) than TM-align
   *  Fast prescreening for similarities in both **sequence** and **structure** space (further n-fold speedup for database searches)
-  *  Alignment of complexes up to 65,535 residues long; 7a4i and 7a4j (37,860 residues each) complexes alignment is ~900,000x faster (Volta) than TM-align
+  *  Alignment of structures up to 65,535 residues long; 7a4i and 7a4j (37,860 residues each) alignment is ~900,000x faster (Volta) than TM-align
   *  Running on Ampere is 2x faster than on Volta
   *  Running on Ada Lovelace is ~1.5x faster than on Ampere, and running on Hopper is even faster than on Ada Lovelace
   *  More sensitive and accurate compared to TM-align when using deep superposition search
@@ -34,7 +35,7 @@ superposition and search method (with structure clustering ability)
   formats
   *  Reading (un)compressed structures from TAR archives 
   *  Directories for search up to 3 levels deep can be specified
-  *  Flexible structure **clustering** ability (GPU only)
+  *  Structure **clustering** ability (GPU only)
   *  Cross-platform/portable code
   *  Opportunities for improvements in speed and accuracy (superposition optimality)
 
@@ -56,10 +57,10 @@ superposition and search method (with structure clustering ability)
   GTalign was tested on and the binaries are provided for the following platforms:
 
   *  Linux x64
-  *  Windows 10/11 x64
+  *  Windows x64
 
-  Tested compilers include GCC versions 7.5.0, 8.3.0, and 11.4.0; 
-  LLVM/Clang version 10.0.0; and native MSVC compilers.
+  Tested compilers include GCC versions 7.5.0, 8.3.0, 11.4.0, and later; 
+  LLVM/Clang version >=10.0.0; and native MSVC compilers.
 
 ## System requirements (GPU version)
 
@@ -83,9 +84,9 @@ superposition and search method (with structure clustering ability)
 
   `Linux_installer_mp/GTalign-linux64-installer-mp.sh`
 
-  On MS Windows 10/11, run the GPU-version installer:
+  On MS Windows, run the GPU-version installer:
 
-  `MS_Windows10_installer_GPU/GTalign-win64-installer.msi`
+  `MS_Windows_installer_GPU/GTalign-win64-installer.msi`
 
 ## Installing Conda packages on Linux
 
@@ -186,7 +187,8 @@ superposition and search method (with structure clustering ability)
   A good practice is to keep `--dev-max-length` reasonably large (e.g., <10000; unless your 
   set of references are all larger) so that many structure pairs are processed in parallel.
 
-  For comparing protein complexes, it usually suffices to set `--ter=0`.
+  For comparing structures where chains are joined in the order listed in the file, 
+  setting `--ter=0` is usually sufficient.
   The options `--ter=0 --split=2` are used to consider all chains present in structure 
   files when executing the program.
 
@@ -203,13 +205,13 @@ superposition and search method (with structure clustering ability)
   The harmonic mean is particularly effective in reducing the significance of structural 
   alignments for pairs with large length differences.
   Therefore, sorting by the harmonic mean may prove beneficial when seeking and analyzing 
-  evolutionarily related or structurally similar proteins with length ratios not exceeding 
+  evolutionarily related or similar structures with length ratios not exceeding 
   several times.
 
 ## Clustering
 
   The GPU version of GTalign allows for clustering (by complete or single linkage) of large 
-  protein structure datasets.
+  structure datasets.
   This option is as highly configurable as the search. A simplest command line example is:
 
 `gtalign -v --cls=my_huge_structure_database.tar -o my_output_directory`
@@ -280,8 +282,8 @@ superposition and search method (with structure clustering ability)
 The GTalign demo notebooks, [GTalign_demo](GTalign_demo.ipynb) and 
 [GTalign_demo_search](GTalign_demo_search.ipynb), for Google Colab are available. 
 The [first](GTalign_demo.ipynb) notebook showcases structure alignment for two large 
-protein complexes -- virus nucleocapsid variants 7a4i and 7a4j -- and runs on Google 
-Colab with a Tesla T4 GPU (finishes in a minute).
+protein complexes (with chains joined in file order) -- virus nucleocapsid variants 
+7a4i and 7a4j -- and runs on Google Colab with a Tesla T4 GPU (finishes in a minute).
 The [second](GTalign_demo_search.ipynb) demonstrates the alignment of all against all 
 queries of the PDB20 dataset, completing in half a minute.
 

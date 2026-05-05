@@ -62,6 +62,7 @@ add_library( mycu STATIC
 #
 	cuss/cusecstr.cu
 	cuss/ssk.cu
+	cuss/sskna.cu
 #
 	cufilter/coverage.cu
 	cufilter/similarity.cu

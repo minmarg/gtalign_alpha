@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -69,7 +69,7 @@ void ExecDPSSwBtck3264x(
     const uint ndbCstrs,
     const uint ndbCposs,
     const uint dbxpad,
-    const uint maxnsteps,
+    const uint /* maxnsteps */,
     const float weight4ss,
     const float weight4rr,
     const float gapopencost,
@@ -80,8 +80,8 @@ void ExecDPSSwBtck3264x(
 {
     // blockIdx.x is the oblique block index in the current iteration of 
     // processing anti-diagonal blocks for all query-reference pairs in the chunk;
-    // uint dbstrndx = blockIdx.y;//reference serial number;
-    // uint qryndx = blockIdx.z;//query serial number
+    const uint dbstrndx = blockIdx.y;//reference serial number;
+    const uint qryndx = blockIdx.z;//query serial number
     constexpr int DDIM = CUDP_2DCACHE_DIM_D + 1;//inner dimension for diagonal buffers
     //cache for scores, coordinates, and transformation matrix:
     __shared__ float diag1Cache[nTDPDiagScoreSubsections * DDIM];//cache for scores of the 1st diagonal
@@ -96,7 +96,7 @@ void ExecDPSSwBtck3264x(
     ///uint maxscCoords = 0;//coordinates of the maximum alignment score maxscCache
     //SECTION for backtracking information
     __shared__ char btckCache[CUDP_2DCACHE_DIM_D][CUDP_2DCACHE_DIM_X+1];
-    int qrylen, dbstrlen;//query and reference length
+    int qrylen, dbstrlen, type;//query and reference length; type
     //distances in positions to the beginnings of the query and reference structures:
     uint qrydst, dbstrdst;
 
@@ -119,11 +119,14 @@ void ExecDPSSwBtck3264x(
 //         return;
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse cache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(blockIdx.y, (int*)diag2Cache);
-        GetQueryLenDst(blockIdx.z, (int*)diag2Cache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)diag2Cache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)diag2Cache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)diag2Cache)[2] = GetQueryLength(qryndx);
+        ((int*)diag2Cache)[3] = qrydst = GetQueryDst(qryndx);
+        ((int*)diag2Cache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+        ((int*)diag2Cache)[5] = GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst);
     }
 
 #if (CUDP_2DCACHE_DIM_D <= 32)
@@ -131,6 +134,9 @@ void ExecDPSSwBtck3264x(
 #else
     __syncthreads();
 #endif
+
+    if((type = GetMoleculeType(((int*)diag2Cache)[4])) != GetMoleculeType(((int*)diag2Cache)[5]))
+        return;//NOTE: no write to [4,5] until the next sync!
 
     //NOTE: no bank conflict when two threads from the same warp access the same address;
     dbstrlen = ((int*)diag2Cache)[0]; dbstrdst = ((int*)diag2Cache)[1];
@@ -153,7 +159,7 @@ void ExecDPSSwBtck3264x(
 
 
     // blockIdx.x is block serial number s within diagonal blkdiagnum;
-    // (x,y) is the bottom-left corner (x,y) coordinates for structure blockIdx.y
+    // (x,y) is the bottom-left corner (x,y) coordinates for structure dbstrndx
     int x, y;
     if( blkdiagnum <= lastydiagnum) {
         //x=-!(d%2)w+2ws; y=dw/2+w-sw -1 (-1, zero-based indices); [when w==b]
@@ -196,8 +202,8 @@ void ExecDPSSwBtck3264x(
     int dbpos = x + dbstrdst;//going right
     int dblen = ndbCposs + dbxpad;
     //offset (w/o a factor) to the beginning of the data along the y axis 
-    // wrt query blockIdx.z: 
-    int yofff = dblen * blockIdx.z;
+    // wrt query qryndx: 
+    int yofff = dblen * qryndx;
 
     if(0 <= x && x < dbstrlen) {
         if(USESEQSCORING) DPLocCacheRfnRsd<0/*shift*/>(rfnRE, dbpos);
@@ -209,7 +215,7 @@ void ExecDPSSwBtck3264x(
 
     if(0 <= (x+CUDP_2DCACHE_DIM_D) && (x+CUDP_2DCACHE_DIM_D) < dbstrlen) {
         //NOTE: blockDim.x==CUDP_2DCACHE_DIM_D
-        if(USESEQSCORING) DPLocCacheRfnSS<CUDP_2DCACHE_DIM_D>(rfnRE, dbpos + CUDP_2DCACHE_DIM_D);
+        if(USESEQSCORING) DPLocCacheRfnRsd<CUDP_2DCACHE_DIM_D>(rfnRE, dbpos + CUDP_2DCACHE_DIM_D);
         DPLocCacheRfnSS<CUDP_2DCACHE_DIM_D>(rfnSS, dbpos + CUDP_2DCACHE_DIM_D);
     } else {
         if(USESEQSCORING) DPLocInitRsd<CUDP_2DCACHE_DIM_D/*shift*/,0/*VALUE*/>(rfnRE);
@@ -280,6 +286,7 @@ void ExecDPSSwBtck3264x(
 
         val1 = (float)(qrySS == rfnSS[threadIdx.x+i]) * weight4ss;
         if(USESEQSCORING) val1 += GetGonnetScore(qryRE, rfnRE[threadIdx.x+i]) * weight4rr;
+        // if(USESEQSCORING && type == gtmtNA) val1 = (float)(qryRE == rfnRE[threadIdx.x+i]) * weight4ss;
 
         //NOTE: TRICK to implement a special case of DP with affine gap cost scheme:
         //NOTE: gap extension cost is 0;
@@ -329,7 +336,7 @@ void ExecDPSSwBtck3264x(
         }
 
 #ifdef CUDPSS_INIT_BTCK_TESTPRINT
-        if(blockIdx.y==CUDPSS_INIT_BTCK_TESTPRINT){
+        if(dbstrndx==CUDPSS_INIT_BTCK_TESTPRINT){
             printf(" d=%u(%u) s=%u i%02d/%u (t%02u): len= %d addr= %u SC= %.4f (yx: %d,%d) "
                     "MM= %.6f  "// MAX= %.6f COORD= %x\n"// BTCK= %d\n"
                     "  >qSS= %d   dSS= %d\n",
@@ -356,7 +363,7 @@ void ExecDPSSwBtck3264x(
 
 
 #ifdef CUDPSS_INIT_BTCK_TESTPRINT
-    if(blockIdx.y==CUDPSS_INIT_BTCK_TESTPRINT)
+    if(dbstrndx==CUDPSS_INIT_BTCK_TESTPRINT)
         printf(" >>> d=%u(%u) s=%u (t%02u): len= %d wrt= %d xpos= %d\n", 
             blkdiagnum,lastydiagnum,blockIdx.x,threadIdx.x, dbstrlen,
             x+CUDP_2DCACHE_DIM_X-1<dbstrlen, x+CUDP_2DCACHE_DIM_X-1);
@@ -364,12 +371,21 @@ void ExecDPSSwBtck3264x(
 
 
     //write the result for next-iteration blocks;
+    //{{before writing the diagonals, adjust the position so that
+    //the value of the last cell is always written at the last position
+    //(dbstrlen-1) for the LAST block irrespective of its placement 
+    //within the DP matrix; this ensures that the last cell
+    //contains the max score; (ilim>0 by definition; beginning);
+    int shft = CUDP_2DCACHE_DIM_X-1;
+    if(qrylen <= y+1 && ilim < CUDP_2DCACHE_DIM_X) shft = ilim - 1;
+    //}}
+
     //WRITE two diagonals;
-    if(0 <= x+CUDP_2DCACHE_DIM_X-1 && x+CUDP_2DCACHE_DIM_X-1 < dbstrlen) {
+    if(0 <= x + shft && x + shft < dbstrlen) {
         int doffs = nTDPDiagScoreSections * nTDPDiagScoreSubsections * yofff;
-        DPLocWriteBuffer<DDIM>(pdiag1, tmpdpdiagbuffers, dbpos+CUDP_2DCACHE_DIM_X-1, doffs,
+        DPLocWriteBuffer<DDIM>(pdiag1, tmpdpdiagbuffers, dbpos + shft, doffs,
                           dblen);
-        DPLocWriteBuffer<DDIM,1>(pdiag2, tmpdpdiagbuffers, dbpos+CUDP_2DCACHE_DIM_X-1, 
+        DPLocWriteBuffer<DDIM,1>(pdiag2, tmpdpdiagbuffers, dbpos + shft, 
                           doffs + dpdssDiag2 * nTDPDiagScoreSubsections * dblen, 
                           dblen);
     }

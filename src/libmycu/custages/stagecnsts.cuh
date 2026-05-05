@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -10,6 +10,7 @@
 #include "libutil/macros.h"
 #include "libmycu/cucom/cudef.h"
 #include "libmycu/cucom/cutemplates.h"
+#include "libgenp/gdats/PM2DVectorFields.h"
 
 // -------------------------------------------------------------------------
 // large distance
@@ -75,11 +76,9 @@ float GetD82(int qrylen, int dbstrlen)
 
 // -------------------------------------------------------------------------
 // GetD0: calculate the distance constant d0 based on the query and
-// reference lengths
-//
-// value for final alignment refinement
+// reference lengths for final protein alignment refinement
 __DINLINE__
-float GetD0fin(int qrylen, int dbstrlen)
+float GetD0finProtein(int qrylen, int dbstrlen)
 {
     float lnorm = GetLnorm(qrylen, dbstrlen);
     float d0 = 0.5f;
@@ -91,13 +90,37 @@ float GetD0fin(int qrylen, int dbstrlen)
     return d0;
 }
 
-// GetD02fin: d0 squared for final alignment refinement
+// d0 for final nucleic acid alignment refinement
 __DINLINE__
-float GetD02fin(int qrylen, int dbstrlen)
+float GetD0finNA(int qrylen, int dbstrlen)
 {
-    float d0 = GetD0fin(qrylen, dbstrlen);
-    return SQRD(d0);
+    float lnorm = GetLnorm(qrylen, dbstrlen);
+    float d0 = 0.3f;
+    if(30.f <= lnorm) d0 = 0.6f * sqrtf(lnorm - 0.5f) - 2.5f;
+    else if(23.f < lnorm) d0 = 0.7f;
+    else if(19.f < lnorm) d0 = 0.6f;
+    else if(15.f < lnorm) d0 = 0.5f;
+    else if(11.f < lnorm) d0 = 0.4f;
+    return myhdmax(0.3f, d0);
 }
+
+// GetD0fin: calculate the distance constant d0 based on the query and
+// reference lengths for final alignment refinement
+__DINLINE__
+float GetD0fin(int qrylen, int dbstrlen, int moltype = gtmtProtein)
+{
+    if(moltype == gtmtNA) return GetD0finNA(qrylen, dbstrlen);
+    return GetD0finProtein(qrylen, dbstrlen);
+}
+
+// // GetD02fin: d0 squared for final alignment refinement
+// __DINLINE__
+// float GetD02fin(int qrylen, int dbstrlen)
+// {
+//     float d0 = GetD0fin(qrylen, dbstrlen);
+//     return SQRD(d0);
+// }
+
 
 __DINLINE__
 float GetD0(int qrylen, int dbstrlen)

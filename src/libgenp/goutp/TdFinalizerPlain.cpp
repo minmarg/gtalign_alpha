@@ -16,7 +16,7 @@
 #include "libutil/CLOptions.h"
 #include "libutil/format.h"
 
-// #include "libgenp/gdats/PM2DVectorFields.h"
+#include "libgenp/gdats/PM2DVectorFields.h"
 // #include "libgenp/gdats/PMBatchStrData.h"
 // #include "libgenp/goutp/TdAlnWriter.h"
 #include "libgenp/gproc/btckcoords.h"
@@ -247,6 +247,10 @@ void TdFinalizer::FormatScoresPlain(
 {
     static const int bsectmscore = CLOptions::GetO_2TM_SCORE();
     int written;
+        unsigned int dbstrdst = (unsigned int)GetDbStructureField<LNTYPE>(strndx, pps2DDist);
+        int dbsttype = (int)GetDbStructureField<INTYPE>(dbstrdst, pmv2D_Ins_Ch_Ord);
+        dbsttype = GetMoleculeType(dbsttype);
+        const char* dbsttypestr = GetMoleculeTypeStr(dbsttype);
     float rmsd = GetOutputAlnDataField<float>(strndx, dp2oadRMSD);
     float tmscoreq = GetOutputAlnDataField<float>(strndx, dp2oadScoreQ);
     float tmscorer = GetOutputAlnDataField<float>(strndx, dp2oadScoreR);
@@ -259,7 +263,7 @@ void TdFinalizer::FormatScoresPlain(
     int gaps = (int)GetOutputAlnDataField<float>(strndx, dp2oadNGaps);
 
     written = 
-    sprintf(outptr,"  Length: Refn. = %d, Query = %d%s%s", dbstrlen, querylen, NL,NL);
+    sprintf(outptr,"  Length: Refn. = %d, Query = %d   Type:%s%s%s", dbstrlen, querylen, dbsttypestr, NL,NL);
     outptr += written;
     written = 
     sprintf(outptr," TM-score (Refn./Query) = %.5f / %.5f, "

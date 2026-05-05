@@ -29,6 +29,8 @@ void MpReform::SelectAndReformatKernel(
     const int ndbCstrs2,
     const int maxndbCposs,
     const uint* const __RESTRICT__ filterdata,
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
     float* const __RESTRICT__ tfmmem,
     float* const __RESTRICT__ wrkmemaux,
     float* const __RESTRICT__ tmpdpdiagbuffers)
@@ -91,6 +93,13 @@ void MpReform::SelectAndReformatKernel(
         for(int qi = 0; qi < nblocks_y; qi++)
             for(int ri = 0; ri < nblocks_x_2; ri++)
             {
+                const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
+                const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+                const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                const int typeqry = GetMoleculeType(typexq);
+                const int typerfn = GetMoleculeType(typexr);
+
                 int offset = (qi/*qryndx*/) * maxndbCposs;
                 #pragma omp simd aligned(wrkmemaux,tmpdpdiagbuffers:memalignment)
                 for(int fi = 0; fi < nTAuxWorkingMemoryVars; fi++) {
@@ -98,6 +107,10 @@ void MpReform::SelectAndReformatKernel(
                     int mloc = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars + fi) * ndbCstrs2;
                     int tloc = offset + nTAuxWorkingMemoryVars * ri/*dbstrndx*/;
                     wrkmemaux[mloc + ri/*dbstrndx*/] = tmpdpdiagbuffers[tloc + fi];
+                }
+
+                {   const int mloc0 = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs2;
+                    wrkmemaux[mloc0 + ri] = (typeqry == typerfn)? 0.0f: (float)CONVERGED_LOWTMSC_bitval;
                 }
 
                 offset = (nqystrs_ + qi/*qryndx*/) * maxndbCposs;

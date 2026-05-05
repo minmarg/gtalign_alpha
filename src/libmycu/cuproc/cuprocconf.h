@@ -13,6 +13,15 @@
 // x-dimension for calculating secondary structure
 // NOTE: unrolling factor is 1: single relatively non-intense calculation
 #define CUSS_CALCSTR_XDIM 128
+// x-dimension for calculating nucleic acid secondary structure
+#define CUSS_NACALCSTR_XDIM 512
+// x,y-dimensions for initializing temporary buffers for nucleic acid
+// secondary structure assignment:
+#define CUSS_NASSINIT_XDIM 256
+#define CUSS_NASSINIT_YDIM 3
+// x-dimension for calculating inter-residue distances for nucleic acid
+// secondary structure assignment:
+#define CUSS_NARESDST_XYDIM 32
 
 // === End of secondary structure section ==================================
 

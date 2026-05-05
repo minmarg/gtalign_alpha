@@ -108,6 +108,7 @@ public:
         float* const __RESTRICT__ tmpdpbotbuffer,
         char* const __RESTRICT__ btckdata);
 
+    template<int NASEQ = 0>
     void ExecDPSSLocal128xKernel(
         const float gapcost,
         const char* const * const __RESTRICT__ querypmbeg,
@@ -147,7 +148,7 @@ public:
 
 protected:
     // {{---------------------------------------------
-    template<int DIMD, int DATALN>
+    template<int DIMD, int DATALN, int DEFV = 0>
     void ReadQryRE(
         const int /*x*/, const int y,
         const int qrydst, const int qrylen,
@@ -290,7 +291,7 @@ protected:
 // querypmbeg, query chunk data;
 // qryRE, query residues read;
 //
-template<int DIMD, int DATALN>
+template<int DIMD, int DATALN, int DEFV>
 inline
 void MpDPHub::ReadQryRE(
     const int /*x*/, const int y,
@@ -300,7 +301,7 @@ void MpDPHub::ReadQryRE(
 {
     #pragma omp simd
     for(int pi = 0; pi < DIMD; pi++)
-        qryRE[pi] = 0;
+        qryRE[pi] = DEFV;
 
     int qposbeg = mymax(y - qrylen + 1, 0);
     int qposend = mymin(y, DIMD - 1);

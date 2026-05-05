@@ -1,19 +1,19 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 by Mindaugas Margelevicius                    *
+ *   Copyright (C) 2021-2026 by Mindaugas Margelevicius                    *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
 #ifndef __gtalign_h__
 #define __gtalign_h__
 
-static const char*  version = "0.19.00";
+static const char*  version = "1.0.0";
 static const char*  verdate = "";
 
 static const char*  instructs = "\n\
 <> []\n\
 \n\
-GTalign, HPC protein structure alignment, superposition and search tool.\n\
-(C)2021-2025 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University\n\
+GTalign, HPC macromolecular structure alignment, superposition and search tool.\n\
+(C)2021-2026 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University\n\
 \n\
 \n\
 Usage (one of the two):\n\
@@ -66,8 +66,8 @@ Clustering options:\n\
 --cls-algorithm=<code>      0: Complete-linkage clustering;\n\
                             1: Single-linkage clustering.\n\
                         Default=0\n\
-\n\
-Output control options (for search usage except --sort):\n\
+\n"
+"Output control options (for search usage except --sort):\n\
 -s <TMscore_threshold>      Report results down to this TM-score limit [0,1).\n\
                             0 implies all results are valid for report.\n\
                             NOTE: Also check the pre-screening options below.\n\
@@ -108,10 +108,18 @@ Interpretation options:\n\
                             1: PDB;\n\
                             2: PDBx/mmCIF.\n\
                         Default=0\n\
---atom=<atom_name>          4-character atom name (with spaces) to represent a\n\
-                            residue (base); e.g., \" C3'\" (RNAs).\n\
-                        Default=\" CA \" (proteins)\n\
+--aatom=<atom_name>         4-character atom name (with spaces) to represent a\n\
+                            protein amino acid.\n\
+                        Default=\" CA \"\n\
+--natom=<atom_name>         4-character atom name (with spaces) to represent a\n\
+                            nucleic acid nucleotide.\n\
+                        Default=\" C3'\"\n\
 --hetatm                    Consider and align both ATOM and HETATM residues.\n\
+--mol=<code>                Molecule type for calculating TM-scores:\n\
+                            0: Protein;\n\
+                            1: Nucleic acid (RNA, DNA);\n\
+                            2: Automatically determined by the majority atom.\n\
+                        Default=2\n\
 --ter=<code>                The end of a structure (chain) in a file is\n\
                             designated by\n\
                             0: end of file;\n\
@@ -137,7 +145,8 @@ Similarity pre-screening options:\n\
                             Minimum provisional TM-score [0,1) for structure\n\
                             pairs to proceed to further stages.\n\
                             0, all pairs are subject to further processing.\n\
-                        Default=0.3\n\
+                            RECOMMENDED: 0.3-0.4 for proteins; 0.2 for RNAs.\n\
+                        Default=0.4\n\
 \n\
 Per-pair computation options:\n\
 --symmetric                 Always produce symmetric alignments for the same\n\
@@ -148,11 +157,23 @@ Per-pair computation options:\n\
 --depth=<code>              Superposition search depth:\n\
                             0: deep; 1: high; 2: medium; 3: shallow.\n\
                         Default=2\n\
+--gapcost=<penalty_code>    Gap cost used to estimate local similarity for\n\
+                            superposition configurations.\n\
+                            0: -0.8;  1: -1.2;  2: -3.0.\n\
+                        Default=1\n\
 --trigger=<percentage>      Threshold for estimated fragment similarity in\n\
                             percent [0,100] to trigger superposition\n\
                             analysis for a certain configuration\n\
                             (0, unconditional analysis).\n\
                         Default=50\n\
+--seedrule=<code>           Seeding strategy for superposition configurations:\n\
+                            0: continuous fragments;\n\
+                            1: 64-frame local alignment;\n\
+                            2: 128-frame local alignment.\n\
+                        Default=1\n\
+--window=<size>             Initial window size (in residues) used to analyze\n\
+                            superposition candidates {256,512}.\n\
+                        Default=256\n\
 --nbranches=<number>        Number [3,16] of independent top-performing\n\
                             branches identified during superposition search to\n\
                             explore in more detail.\n\
@@ -183,7 +204,8 @@ Per-pair computation options:\n\
                             11: --depth=3 --trigger=20 --refinement=0 --convergence=2\n\
                             12: --depth=3 --trigger=50 --refinement=0 --convergence=2\n\
                             13: --no-detailed-search --refinement=0 --convergence=2\n\
-                        Default=9\n\
+                        Default=9 (NOTE: Use --speed=8 for nucleic acids to match the\n\
+                            protein default)\n\
 \n\
 HPC options:\n\
 --cpu-threads-reading=<count>\n\
@@ -244,7 +266,7 @@ Device options:\n\
                         Default=[all memory of GPU(s)] (with support for GPUs)\n\
                         Default=16384 (without support for GPUs)\n\
 --dev-expected-length=<length>\n\
-                            Expected length of database proteins. Its values\n\
+                            Expected length of database entries. Its values\n\
                             are restricted to the interval [20,200].\n\
                             NOTE: Increasing it reduces memory requirements,\n\
                             but mispredictions may cost additional computation\n\
@@ -274,7 +296,7 @@ Examples:\n\
 <> -v --qrs=str1.cif.gz --rfs=my_huge_structure_database.tar -o my_output_directory\n\
 <> -v --qrs=struct1.pdb --rfs=struct2.pdb,struct3.pdb,struct4.pdb -o my_output_directory\n\
 <> -v --qrs=struct1.pdb,my_struct_directory --rfs=my_ref_directory -o my_output_directory\n\
-<> -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=archive.tar,my_ref_dir -s 0 -o mydir\n\
+<> -v --qrs=str1.pdb.gz,str2.cif.gz --rfs=archive.tar,my_ref_dir -s 0 -o mydir --speed=13\n\
 <> -v --cls=my_huge_structure_database.tar -o my_output_directory\n\
 \n\
 ";

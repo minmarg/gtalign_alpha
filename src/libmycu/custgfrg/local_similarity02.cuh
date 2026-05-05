@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -10,6 +10,7 @@
 // extensive fragment-based search of optimal superpositions;
 __global__ void CalcLocalSimilarity2_frg2(
     const float thrsimilarityperc,
+    const int seedapproachstruct,
     const int depth,
     const uint ndbCstrs,
     const uint ndbCposs,

@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -30,7 +30,7 @@
 
 #include "gtalign.h"
 
-#   include "libmymp/mputil/simdscan.h"
+#include "libmymp/mputil/simdscan.h"
 
 // =========================================================================
 // declarations:
@@ -40,6 +40,7 @@ void SplitString(std::string argstring, std::string option, std::vector<std::str
 inline int mystring2int(int& retval, const std::string& strval, const char* errstr)
 {
     char* p;
+    errno = 0;//NOTE:
     retval = strtol( strval.c_str(), &p, 10 );
     if( errno || *p ) {
         error( errstr );
@@ -51,6 +52,7 @@ inline int mystring2int(int& retval, const std::string& strval, const char* errs
 inline int mystring2float(float& retval, const std::string& strval, const char* errstr)
 {
     char* p;
+    errno = 0;//NOTE:
     retval = strtof( strval.c_str(), &p);
     if( errno || *p ) {
         error( errstr );
@@ -100,8 +102,10 @@ int main( int argc, char *argv[] )
     std::string     outfmt;//output format
     //
     std::string     inpfmt;//input format
-    std::string     atom;//atom name
+    std::string     aatom;//atom name
+    std::string     natom;//atom name
     bool            hetatm = 0;//consider HETATM records
+    std::string     molt;//molecule type
     std::string     term;//structure terminator
     std::string     split;//structure split approach
     std::string     superp;//superposition/alignment algorithm
@@ -117,7 +121,10 @@ int main( int argc, char *argv[] )
     bool            symmetric = 0;//flag of symmetric alignments
     std::string     refinement;//refinement detail
     std::string     depth;//superposition search depth
+    std::string     gapcost;//gap cost used to estimate local similarity
     std::string     trigger;//provisional similarity percentage
+    std::string     seedrule;//seeding strategy for superposition configurations
+    std::string     window;//window size used to analyze superposition candidates
     std::string     nbranches;//# final superposition branches to explore
     bool            addsearchbyss = 0;//flag for adding search by ss
     bool            nodetailedsearch = 0;//flag for no detailed search
@@ -222,14 +229,15 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         gtaOpt_s, gtaOpt_2tm_score, gtaOpt_sort, gtaOpt_nhits, gtaOpt_nalns,
         gtaOpt_wrap, gtaOpt_no_deletions, gtaOpt_referenced, gtaOpt_outfmt,
         //
-        gtaOpt_infmt, gtaOpt_atom, gtaOpt_hetatm, gtaOpt_ter, gtaOpt_split,
-        gtaOpt_superp,
+        gtaOpt_infmt, gtaOpt_aatom, gtaOpt_natom, gtaOpt_hetatm, gtaOpt_mol,
+        gtaOpt_ter, gtaOpt_split, gtaOpt_superp,
         //
         gtaOpt_pre_similarity, gtaOpt_pre_score,
         //
         gtaOpt_i, gtaOpt_I, gtaOpt_d0, gtaOpt_u, gtaOpt_a,
         gtaOpt_symmetric, gtaOpt_refinement,
-        gtaOpt_depth, gtaOpt_trigger, gtaOpt_nbranches,
+        gtaOpt_depth, gtaOpt_gapcost, gtaOpt_trigger, gtaOpt_seedrule,
+        gtaOpt_window, gtaOpt_nbranches,
         gtaOpt_add_search_by_ss, gtaOpt_no_detailed_search,
         gtaOpt_convergence, gtaOpt_speed,
         gtaOpt_cp, gtaOpt_mirror,
@@ -271,8 +279,10 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         {"outfmt", my_required_argument, gtaOpt_outfmt},
         //
         {"infmt", my_required_argument, gtaOpt_infmt},
-        {"atom", my_required_argument, gtaOpt_atom},
+        {"aatom", my_required_argument, gtaOpt_aatom},
+        {"natom", my_required_argument, gtaOpt_natom},
         {"hetatm", my_no_argument, gtaOpt_hetatm},
+        {"mol", my_required_argument, gtaOpt_mol},
         {"ter", my_required_argument, gtaOpt_ter},
         {"split", my_required_argument, gtaOpt_split},
         {"superp", my_required_argument, gtaOpt_superp},
@@ -288,7 +298,10 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         {"symmetric", my_no_argument, gtaOpt_symmetric},
         {"refinement", my_required_argument, gtaOpt_refinement},
         {"depth", my_required_argument, gtaOpt_depth},
+        {"gapcost", my_required_argument, gtaOpt_gapcost},
         {"trigger", my_required_argument, gtaOpt_trigger},
+        {"seedrule", my_required_argument, gtaOpt_seedrule},
+        {"window", my_required_argument, gtaOpt_window},
         {"nbranches", my_required_argument, gtaOpt_nbranches},
         {"add-search-by-ss", my_no_argument, gtaOpt_add_search_by_ss},
         {"no-detailed-search", my_no_argument, gtaOpt_no_detailed_search},
@@ -358,8 +371,10 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
                     case gtaOpt_outfmt: outfmt = myoptarg; break;
                     //
                     case gtaOpt_infmt:  inpfmt = myoptarg; break;
-                    case gtaOpt_atom:   atom = myoptarg; break;
+                    case gtaOpt_aatom:  aatom = myoptarg; break;
+                    case gtaOpt_natom:  natom = myoptarg; break;
                     case gtaOpt_hetatm: hetatm = 1; break;
+                    case gtaOpt_mol:    molt = myoptarg; break;
                     case gtaOpt_ter:    term = myoptarg; break;
                     case gtaOpt_split:  split = myoptarg; break;
                     case gtaOpt_superp: superp = myoptarg; break;
@@ -375,7 +390,10 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
                     case gtaOpt_symmetric:  symmetric = 1; break;
                     case gtaOpt_refinement: refinement = myoptarg; break;
                     case gtaOpt_depth:      depth = myoptarg; break;
+                    case gtaOpt_gapcost:    gapcost = myoptarg; break;
                     case gtaOpt_trigger:    trigger = myoptarg; break;
+                    case gtaOpt_seedrule:   seedrule = myoptarg; break;
+                    case gtaOpt_window:     window = myoptarg; break;
                     case gtaOpt_nbranches:  nbranches = myoptarg; break;
                     case gtaOpt_add_search_by_ss: addsearchbyss = 1; break;
                     case gtaOpt_no_detailed_search: nodetailedsearch = 1; break;
@@ -416,6 +434,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
 
 
     if( !verbose.empty()) {
+        errno = 0;//NOTE:
         verblev = strtol( verbose.c_str(), &p, 10 );
         if( errno || *p || verblev < 0 ) {
             error( "Invalid verbose mode argument." );
@@ -613,30 +632,56 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
             CLOPTASSIGN(I_INFMT, c);
         }
 
-        if( !atom.empty()) {
-            if( atom.size() != 4 ) {
-                error( "Option --atom is to be exactly a 4-character string." );
+        if(!aatom.empty()) {
+            if(aatom.size() != 4 ) {
+                error( "Option --aatom to be exactly a 4-character string." );
                 return EXIT_FAILURE;
             }
-            CLOPTASSIGN(I_ATOM_PROT, atom);
-            CLOPTASSIGN(I_ATOM_RNA, atom);
+            CLOPTASSIGN(I_AATOM, aatom);
 
             //trim leading and trailing whitespaces
-            size_t atpos = atom.find_first_not_of(" \t");
-            atom = (atpos == std::string::npos)? "": atom.substr(atpos);
-            atpos = atom.find_last_not_of(" \t");
-            atom = (atpos == std::string::npos)? "": atom.substr(0, atpos+1);
+            size_t atpos = aatom.find_first_not_of(" \t");
+            aatom = (atpos == std::string::npos)? "": aatom.substr(atpos);
+            atpos = aatom.find_last_not_of(" \t");
+            aatom = (atpos == std::string::npos)? "": aatom.substr(0, atpos+1);
 
-            if(atom.empty()) {
-                error( "Invalid argument of option --atom." );
+            if(aatom.empty()) {
+                error( "Invalid argument of option --aatom." );
                 return EXIT_FAILURE;
             }
 
-            CLOPTASSIGN(I_ATOM_PROT_trimmed, atom);
-            CLOPTASSIGN(I_ATOM_RNA_trimmed, atom);
+            CLOPTASSIGN(I_AATOM_trimmed, aatom);
+        }
+
+        if(!natom.empty()) {
+            if(natom.size() != 4 ) {
+                error( "Option --natom to be exactly a 4-character string." );
+                return EXIT_FAILURE;
+            }
+            CLOPTASSIGN(I_NATOM, natom);
+
+            //trim leading and trailing whitespaces
+            size_t atpos = natom.find_first_not_of(" \t");
+            natom = (atpos == std::string::npos)? "": natom.substr(atpos);
+            atpos = natom.find_last_not_of(" \t");
+            natom = (atpos == std::string::npos)? "": natom.substr(0, atpos+1);
+
+            if(natom.empty()) {
+                error( "Invalid argument of option --natom." );
+                return EXIT_FAILURE;
+            }
+
+            CLOPTASSIGN(I_NATOM_trimmed, natom);
+            CLOPTASSIGN(I_NATOM_type, GetNAAtomType(natom));
         }
 
         CLOPTASSIGN(I_HETATM, hetatm);
+
+        if( !molt.empty()) {
+            if( mystring2int(c, molt, "Invalid argument of option --mol."))
+                return EXIT_FAILURE;
+            CLOPTASSIGN(I_MOL, c);
+        }
 
         if( !term.empty()) {
             if( mystring2int(c, term, "Invalid argument of option --ter."))
@@ -740,10 +785,29 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
             CLOPTASSIGN(C_DEPTH, c);
         }
 
+        if( !gapcost.empty()) {
+            if( mystring2int(c, gapcost, "Invalid argument of option --gapcost."))
+                return EXIT_FAILURE;
+            CLOPTASSIGN(C_GAPCOST, c);
+        }
+
         if( !trigger.empty()) {
             if( mystring2int(c, trigger, "Invalid argument of option --trigger."))
                 return EXIT_FAILURE;
             CLOPTASSIGN(C_TRIGGER, c);
+        }
+
+        if( !seedrule.empty()) {
+            if( mystring2int(c, seedrule, "Invalid argument of option --seedrule."))
+                return EXIT_FAILURE;
+            CLOPTASSIGN(C_SEEDRULE, c);
+        }
+
+        if( !window.empty()) {
+            const char* errstr = "Invalid argument of option --window.";
+            if(mystring2int(c, window, errstr)) return EXIT_FAILURE;
+            if((c & (c - 1))) {error(errstr); return EXIT_FAILURE;}//power of 2
+            CLOPTASSIGN(C_WINDOW, c);
         }
 
         if( !nbranches.empty()) {

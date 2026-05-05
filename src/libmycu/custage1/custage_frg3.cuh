@@ -175,7 +175,7 @@ private:
         const float thrscorefactor,
         cudaStream_t streamproc,
         const int qryfragfct, const int rfnfragfct, const int fragndx,
-        const uint maxnsteps,
+        const uint maxnsteps, const uint actualnsteps,
         const uint nqystrs, const uint ndbCstrs,
         const uint ndbCposs, const uint dbxpad,
         const char* __restrict__ dpscoremtx,

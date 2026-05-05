@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -89,6 +89,42 @@ __global__ void SetLowScoreConvergenceFlag(
         int convflag = wrkmemaux[mloc0 + tawmvConverged * ndbCstrs + dbstrndx];//float->int
         wrkmemaux[mloc0 + tawmvConverged * ndbCstrs + dbstrndx] =
             (float)(convflag | CONVERGED_LOWTMSC_bitval);
+    }
+}
+
+// -------------------------------------------------------------------------
+// InitWithTypeCompatibility: initialize all scores and set convergence 
+// flag for incompatible types;
+// ndbCstrs, total number of reference structures in the chunk;
+// maxnsteps, max number of steps reserved for each reference structure;
+// NOTE: memory pointers should be aligned!
+// wrkmemaux, auxiliary working memory;
+// 
+__global__ void InitWithTypeCompatibility(
+    const uint ndbCstrs,
+    const uint maxnsteps,
+    float* __restrict__ wrkmemaux)
+{
+    const uint dbstrndx = blockIdx.x * blockDim.x + threadIdx.x;//reference
+    const uint qryndx = blockIdx.y;//query
+    const uint sfragfct = blockIdx.z;//fragment factor
+
+    const uint mloc = ((qryndx * maxnsteps + sfragfct) * nTAuxWorkingMemoryVars) * ndbCstrs;
+
+    #pragma unroll
+    for(int f = 0; f < nTAuxWorkingMemoryVars; f++)
+        wrkmemaux[mloc + f * ndbCstrs + dbstrndx] = 0.0f;
+
+    if(sfragfct != 0) return;//all block exits!
+
+    if(dbstrndx < ndbCstrs) {
+        const uint qrydst = GetQueryDst(qryndx);
+        const int qrytype = GetMoleculeType(GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst));
+        const uint dbstrdst = GetDbStrDst(dbstrndx);
+        const int dbstrtype = GetMoleculeType(GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst));
+        if(qrytype != dbstrtype)
+            wrkmemaux[mloc + tawmvConverged * ndbCstrs + dbstrndx] =
+                (float)CONVERGED_LOWTMSC_bitval;
     }
 }
 
@@ -244,6 +280,7 @@ INSTANTIATE_InitScores(INITOPT_CONVFLAG_LOWTMSC_SET|INITOPT_ALL);
 INSTANTIATE_InitScores(INITOPT_CONVFLAG_FRAGREF|INITOPT_CONVFLAG_SCOREDP);
 INSTANTIATE_InitScores(INITOPT_NALNPOSS|INITOPT_CONVFLAG_SCOREDP);
 INSTANTIATE_InitScores(INITOPT_BEST|INITOPT_CONVFLAG_ALL);
+INSTANTIATE_InitScores(INITOPT_BEST|INITOPT_CONVFLAG_FRAGREF|INITOPT_CONVFLAG_SCOREDP|INITOPT_CONVFLAG_NOTMPRG);
 
 // -------------------------------------------------------------------------
 // SaveLastScore: save the last best score at the position corresponding to 
@@ -792,6 +829,7 @@ void ProductionSaveBestScoresAndTMAmongBests(
     __shared__ uint ndxCache[CUS1_TBSP_SCORE_MAX_YDIM][CUS1_TBSP_SCORE_MAX_XDIM+1];
     __shared__ float adtCache[CUS1_TBSP_SCORE_MAX_XDIM][nADT];
     __shared__ int lenCache[CUS1_TBSP_SCORE_MAX_XDIM+1];
+    __shared__ int ctpCache[CUS1_TBSP_SCORE_MAX_XDIM+1];//types
 
     scvCache[threadIdx.y][threadIdx.x] = 0.0f;
     ndxCache[threadIdx.y][threadIdx.x] = 0;
@@ -804,6 +842,11 @@ void ProductionSaveBestScoresAndTMAmongBests(
 
     if(threadIdx.y == 1 && threadIdx.x == 0)
         lenCache[QRYX] = GetQueryLength(qryndx);
+
+    if(threadIdx.y == 2 && dbstrndx < ndbCstrs) {
+        uint dbstrdst = GetDbStrDst(dbstrndx);
+        ctpCache[threadIdx.x] = GetMoleculeType(GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst));
+    }
 
     //no sync; threads do not access other cells below
 
@@ -855,8 +898,8 @@ void ProductionSaveBestScoresAndTMAmongBests(
                 wrkmemaux[mloc0 + tawmvGrandBest * ndbCstrs + dbstrndx] = bscore;
                 //score calculated for the longer structure:
                 float gbest = wrkmemaux[mloc + tawmvBest0 * ndbCstrs + dbstrndx];
-                const float d0Q = GetD0fin(lenCache[QRYX], lenCache[QRYX]);//threshold for query
-                const float d0R = GetD0fin(lenCache[threadIdx.x], lenCache[threadIdx.x]);//for reference
+                const float d0Q = GetD0fin(lenCache[QRYX], lenCache[QRYX], ctpCache[threadIdx.x]);//threshold for query
+                const float d0R = GetD0fin(lenCache[threadIdx.x], lenCache[threadIdx.x], ctpCache[threadIdx.x]);//for reference
                 //make bscore (should not be used below associated clauses) represent the query score:
                 if(lenCache[threadIdx.x] < lenCache[QRYX]) myhdswap(bscore, gbest);
                 //write alignment information in cache:
@@ -958,7 +1001,8 @@ void SaveTopNScoresAndTMsAmongSecondaryBests(
     const uint effnsteps,
     const float* __restrict__ wrkmemtmibest,
     float* __restrict__ wrkmemtm,
-    float* __restrict__ wrkmemaux)
+    float* __restrict__ wrkmemaux,
+    const int seedapproachstruct)
 {
     enum {
         //length threshold for triggering the analysis of secondary best scores:
@@ -973,7 +1017,7 @@ void SaveTopNScoresAndTMsAmongSecondaryBests(
     };
     //index of the structure (blockIdx.x, refn. serial number):
     uint dbstrndx = blockIdx.x * blockDim.x + threadIdx.x;
-    uint qryndx = blockIdx.y;//query serial number
+    const uint qryndx = blockIdx.y;//query serial number
     __shared__ float scvCache2[lYDIM][lXDIM+1];
     __shared__ float scvCache3[lYDIM][lXDIM+1];
     __shared__ int ndxCache2[lYDIM][lXDIM+1];
@@ -1020,22 +1064,31 @@ void SaveTopNScoresAndTMsAmongSecondaryBests(
 
         float bscore = 0.0f;
         int qryfragfct, rfnfragfct;
+        int qrystepsz, rfnstepsz;
 
         if(dbstrndx < ndbCstrs)
             GetQryRfnFct_frg2(
                 depth, &qryfragfct, &rfnfragfct,
                 dbstrlen[lQRYNDX], dbstrlen[threadIdx.x],
-                sfragfct, rfnfragfctinit);
+                sfragfct, rfnfragfctinit,
+                &qrystepsz, &rfnstepsz,
+                seedapproachstruct);
 
         uint mloc = ((qryndx * maxnsteps + sfragfct) * nTAuxWorkingMemoryVars) * ndbCstrs;
 
         bool sec2met =
             (dbstrndx < ndbCstrs) &&
+            //NOTE: out-of-bounds condition check for consistency!
+            (qryfragfct * qrystepsz < dbstrlen[lQRYNDX]) &&
+            (rfnfragfct * rfnstepsz < dbstrlen[threadIdx.x]) &&
             ((dbstrlen[lQRYNDX] <= lLENTHR) || ((qryfragfct & 1) == 0)) && 
             ((dbstrlen[threadIdx.x] <= lLENTHR) || ((rfnfragfct & 1) == 0));
 
         bool sec3met =
             twoconfs && (dbstrndx < ndbCstrs) &&
+            //NOTE: out-of-bounds condition check for consistency!
+            (qryfragfct * qrystepsz < dbstrlen[lQRYNDX]) &&
+            (rfnfragfct * rfnstepsz < dbstrlen[threadIdx.x]) &&
             ((dbstrlen[lQRYNDX] <= lLENTHR) || (myfastmod3(qryfragfct) == 0)) && 
             ((dbstrlen[threadIdx.x] <= lLENTHR) || (myfastmod3(rfnfragfct) == 0));
 
@@ -1162,11 +1215,17 @@ void SaveTopNScoresAndTMsAmongBests(
     float* __restrict__ wrkmemtm,
     float* __restrict__ wrkmemaux)
 {
+    enum {
+        lTOPN = CUS1_TBSP_DPSCORE_TOP_N,
+        lXDIM = CUS1_TBSP_SCORE_MAX_XDIM,
+        lYDIM = CUS1_TBSP_SCORE_MAX_YDIM
+    };
+
     //index of the structure (blockIdx.x, refn. serial number):
     uint dbstrndx = blockIdx.x * blockDim.x + threadIdx.x;
-    uint qryndx = blockIdx.y;//query serial number
-    __shared__ float scvCache[CUS1_TBSP_SCORE_MAX_YDIM][CUS1_TBSP_SCORE_MAX_XDIM+1];
-    __shared__ uint ndxCache[CUS1_TBSP_SCORE_MAX_YDIM][CUS1_TBSP_SCORE_MAX_XDIM+1];
+    const uint qryndx = blockIdx.y;//query serial number
+    __shared__ float scvCache[lYDIM][lXDIM+1];
+    __shared__ uint ndxCache[lYDIM][lXDIM+1];
 
     scvCache[threadIdx.x][threadIdx.y] = 0.0f;
     ndxCache[threadIdx.x][threadIdx.y] = 0;
@@ -1188,15 +1247,15 @@ void SaveTopNScoresAndTMsAmongBests(
     __syncthreads();
 
     //sort scores and accompanying indices:
-    BatcherSortYDIMparallel<CUS1_TBSP_SCORE_MAX_YDIM,false/*descending*/>(
-        CUS1_TBSP_SCORE_MAX_YDIM, scvCache[threadIdx.x], ndxCache[threadIdx.x]);
+    BatcherSortYDIMparallel<lYDIM,false/*descending*/>(
+        lYDIM, scvCache[threadIdx.x], ndxCache[threadIdx.x]);
     //no sync: sync'ed in BatcherSortYDIMparallel
 
-    //scvCache[...][0..CUS1_TBSP_DPSCORE_TOP_N-1]now contain top N scores
+    //scvCache[...][0..lTOPN-1]now contain top N scores
     uint sfragfct = ndxCache[threadIdx.x][threadIdx.y];
 
     //write scores first
-    if(threadIdx.y < CUS1_TBSP_DPSCORE_TOP_N && threadIdx.y < maxnsteps) {
+    if(threadIdx.y < lTOPN && threadIdx.y < maxnsteps) {
         uint mloc = ((qryndx * maxnsteps + threadIdx.y) * nTAuxWorkingMemoryVars) * ndbCstrs;
         if(dbstrndx < ndbCstrs) {
             float bscore = scvCache[threadIdx.x][threadIdx.y];
@@ -1219,19 +1278,19 @@ void SaveTopNScoresAndTMsAmongBests(
     //NOTE: change reference structure indexing: threadIdx.x -> threadIdx.y
     dbstrndx = blockIdx.x * blockDim.x + threadIdx.y;
 
-    constexpr int nmtxs = CUS1_TBSP_SCORE_MAX_XDIM / nTTranformMatrix;
+    constexpr int nmtxs = lXDIM / nTTranformMatrix;
     int ndx = 0;//relative reference index
     for(int i = 1; i < nmtxs; i++)
         if(i * nTTranformMatrix <= threadIdx.x) ndx = i;
 
     //READ and WRITE iteration-best transformation matrices;
-    //rearrange CUS1_TBSP_DPSCORE_TOP_N best performing mtxs at the first slots (sfragfct indices)
-    for(int sx = 0; sx < CUS1_TBSP_DPSCORE_TOP_N; sx += nmtxs) {
+    //rearrange lTOPN best performing mtxs at the first slots (sfragfct indices)
+    for(int sx = 0; sx < (int)lTOPN; sx += nmtxs) {
         if(threadIdx.x < nTTranformMatrix * nmtxs && 
            threadIdx.x < nTTranformMatrix * (ndx+1) && dbstrndx < ndbCstrs) {
             uint tid = threadIdx.x - nTTranformMatrix * ndx;
             uint sxx = sx + ndx;
-            if(sxx < CUS1_TBSP_DPSCORE_TOP_N && sxx < maxnsteps) {
+            if(sxx < lTOPN && sxx < maxnsteps) {
                 //NOTE: indexing changed so that threadIdx.y refers to a different reference
                 sfragfct = ndxCache[threadIdx.y][sxx];
                 float bscore = scvCache[threadIdx.y][sxx];

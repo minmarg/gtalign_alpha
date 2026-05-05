@@ -184,7 +184,7 @@ protected:
         const float* const __RESTRICT__ tmpdpdiagbuffers,
         float (* __RESTRICT__ ccm)[XDIM], int pi);
 
-    template<int XDIM>
+    template<int XDIM, int UPDATENPOS = 0>
     void UpdateCCMCacheHelper(
         const float qx, const float qy, const float qz,
         const float rx, const float ry, const float rz,
@@ -530,7 +530,7 @@ void MpStageBase::UpdateCCMOneAlnPos_DPExtended(
 }
 
 // -------------------------------------------------------------------------
-// UpdateCCMCache: update cross-covariance cache data given query and 
+// UpdateCCMCacheHelper: update cross-covariance cache data given query and 
 // reference coordinates, respectively;
 //
 #if defined(OS_MS_WINDOWS)
@@ -538,7 +538,7 @@ void MpStageBase::UpdateCCMOneAlnPos_DPExtended(
 #else 
 #pragma omp declare simd linear(pi:1) uniform(ccm) notinbranch
 #endif
-template<int XDIM>
+template<int XDIM, int UPDATENPOS>
 inline
 void MpStageBase::UpdateCCMCacheHelper(
     const float qx, const float qy, const float qz,
@@ -564,6 +564,9 @@ void MpStageBase::UpdateCCMCacheHelper(
     ccm[twmvCVr_0][pi] += rx;
     ccm[twmvCVr_1][pi] += ry;
     ccm[twmvCVr_2][pi] += rz;
+
+    //update the number of positions
+    if(UPDATENPOS == 1) ccm[twmvNalnposs][pi] += 1.0f;
 }
 
 

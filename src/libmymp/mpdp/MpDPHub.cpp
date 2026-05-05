@@ -1058,6 +1058,12 @@ void MpDPHub::ExecDPSSwBtck128xKernel(
                         const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                         const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                         const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                        const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+                        const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                        const int typeqry = GetMoleculeType(typexq);
+                        const int typerfn = GetMoleculeType(typexr);
+
+                        if(typeqry != typerfn) continue;
 
                         //lastydiagnum, last block diagonal serial number along y axis:
                         //each division separates a number of diagonals (nsepds);
@@ -1145,6 +1151,8 @@ void MpDPHub::ExecDPSSwBtck128xKernel(
                                 val1 = (float)(qrySS[pi] == rfnSS[pi+i]) * weight4ss;
                                 if(USESEQSCORING)
                                     val1 += GONNET_SCORES.get(qryRE[pi], rfnRE[pi+i]) * weight4rr;
+                                // if(USESEQSCORING && typeqry == gtmtNA)
+                                //     val1 = (float)(qryRE[pi] == rfnRE[pi+i]) * weight4ss;
 
                                 //NOTE: TRICK to implement a special case of DP with affine gap cost scheme:
                                 //NOTE: gap extension cost is 0;
@@ -1244,6 +1252,7 @@ INSTANTIATE_MpDPHub_ExecDPSSwBtck128xKernel(true);
 // maxscoordsbuf, coordinates (positions) of maximum alignment scores;
 // dpscoremtx, rounded dp score matrix;
 //
+template<int NASEQ>
 void MpDPHub::ExecDPSSLocal128xKernel(
     const float gapcost,
     const char* const * const __RESTRICT__ querypmbeg,
@@ -1317,6 +1326,11 @@ void MpDPHub::ExecDPSSLocal128xKernel(
                         const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                         const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                         const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                        //NOTE: same type for reference upon type compatibility verification (default)!
+                        const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+                        // const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                        const int typeqry = GetMoleculeType(typexq);
+                        // const int typerfn = GetMoleculeType(typexr);
 
                         //lastydiagnum, last block diagonal serial number along y axis:
                         //each division separates a number of diagonals (nsepds);
@@ -1353,8 +1367,9 @@ void MpDPHub::ExecDPSSLocal128xKernel(
                         // //x is now the position this thread will process
                         // x += threadIdx.x;
 
-                        ReadQrySS<DIMD,PMBSdatalignment>(
-                            x, y, qrydst, qrylen,  querypmbeg, qrySS);
+                        if(NASEQ == 0 || typeqry == gtmtProtein)
+                            ReadQrySS<DIMD,PMBSdatalignment>(x, y, qrydst, qrylen,  querypmbeg, qrySS);
+                        else ReadQryRE<DIMD,PMBSdatalignment,pmvLOOP>(x, y, qrydst, qrylen,  querypmbeg, qrySS);
 
                         //db reference structure position corresponding to the oblique block's
                         //bottom-left corner in the buffers dc_pm2dvfields_ (score matrix) 
@@ -1364,8 +1379,9 @@ void MpDPHub::ExecDPSSLocal128xKernel(
                         //offset (w/o a factor) to the beginning of the data along the y axis wrt query qi: 
                         int yofff = dblen * qi;
 
-                        ReadRfnSS<DIMDpX,PMBSdatalignment>(
-                            x, y, dbstrdst, dbstrlen,  bdbCpmbeg, rfnSS);
+                        if(NASEQ == 0 || typeqry == gtmtProtein)
+                            ReadRfnSS<DIMDpX,PMBSdatalignment>(x, y, dbstrdst, dbstrlen,  bdbCpmbeg, rfnSS);
+                        else ReadRfnRE<DIMDpX,PMBSdatalignment>(x, y, dbstrdst, dbstrlen,  bdbCpmbeg, rfnSS);
 
                         //cache TWO DIAGONALS from the previous (along the x axis) oblique block;
                         //tmpdpdiagbuffers: (1D, along the x axis)
@@ -1389,32 +1405,32 @@ void MpDPHub::ExecDPSSLocal128xKernel(
                             #pragma omp simd
                             for(int pi = 0; pi < DIMD; pi++) {
                                 float val1, val2;
+                                unsigned int bk = dpbtckDIAG;
 
                                 //NOTE: match score:
                                 val1 = (float)((qrySS[pi] == rfnSS[pi+i]) * 2) - 1.0f;
 
                                 //MM state update (diagonal direction)
                                 val1 += pdiag2[lfDgNdx<DIMD1>(dpdsssStateMM, pi+1)];
-                                if(val1 < 0.0f) val1 = 0.0f;
-                                // if(val1) bk = dpbtckDIAG;
+                                if(val1 < 0.0f) {val1 = 0.0f; bk = dpbtckSTOP;}
 
                                 //////// SYNC ///////////
 
                                 //IM state update (left direction)
                                 val2 = pdiag1[lfDgNdx<DIMD1>(dpdsssStateMM, pi)] + gapcost;
-                                if(val1 < val2) val1 = val2;
-                                // mymaxassgn(val1, val2, bk, (int)dpbtckLEFT);
+                                if(val1 < val2) {val1 = val2; bk = dpbtckLEFT;}
 
                                 //MI state update (up direction)
                                 val2 = pdiag1[lfDgNdx<DIMD1>(dpdsssStateMM, pi+1)] + gapcost;
-                                if(val1 < val2) val1 = val2;
-                                // mymaxassgn(val1, val2, bk, (int)dpbtckUP);
+                                if(val1 < val2) {val1 = val2; bk = dpbtckUP;}
 
                                 //WRITE: write max value
                                 pdiag2[lfDgNdx<DIMD1>(dpdsssStateMM, pi)] = val1;
 
                                 //WRITE
                                 dpsc[pi][i] = (char)(((unsigned int)val1) & 255);//val1%256
+                                //WRITE: write btck in the two least significant bits:
+                                dpsc[pi][i] = (char)((((unsigned int)val1) & 0xfc) | (bk));
 
                             }//simd for(pi < DIMD)
 
@@ -1463,6 +1479,19 @@ void MpDPHub::ExecDPSSLocal128xKernel(
 }
 
 // -------------------------------------------------------------------------
+// Instantiations
+// 
+#define INSTANTIATE_ExecDPSSLocal128xKernel(tpNASEQ) \
+    template void MpDPHub::ExecDPSSLocal128xKernel<tpNASEQ>( \
+        const float gapcost, \
+        const char* const * const __RESTRICT__ querypmbeg, \
+        const char* const * const __RESTRICT__ bdbCpmbeg, \
+        const float* const __RESTRICT__ wrkmemaux, \
+        float* const __RESTRICT__ tmpdpdiagbuffers, \
+        float* const __RESTRICT__ tmpdpbotbuffer, \
+        char* const __RESTRICT__ dpscoremtx);
+
+INSTANTIATE_ExecDPSSLocal128xKernel(0);
 // -------------------------------------------------------------------------
 
 

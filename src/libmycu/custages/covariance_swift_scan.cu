@@ -994,7 +994,7 @@ void CalcScoresUnrl_SWFTscanProgressive(
             xfct = CUS1_TBSP_SCORE_XFCT,//unrolling factor in the x dimension
             xdim = CUS1_TBSP_SCORE_XDIM,//x-dimension of the thread block
             szqnxch = CUSF2_TBSP_INDEX_SCORE_QNX_CACHE_SIZE,//cache size
-            nwrpsdim = (xdim>>5),//XDIM/warpsize(2^5)
+            nwrpsdim = (xdim>>llog2warpsize),//XDIM/warpsize(2^5)
     };
     __shared__ float tmpSMbuf[nwrpsdim];
     //cache for query positions: 
@@ -1042,12 +1042,17 @@ void CalcScoresUnrl_SWFTscanProgressive(
 #endif
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
-    //reuse scvCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)scvCache);
-        GetQueryLenDst(qryndx, (int*)scvCache + 2);
+    //reuse ccmCache
+    if(threadIdx.x == 0) {
+        ((int*)scvCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)scvCache)[1] = GetDbStrDst(dbstrndx);
     }
+
+    if(threadIdx.x == xdim - 1) {
+        ((int*)scvCache)[2] = GetQueryLength(qryndx);
+        // ((int*)scvCache)[3] = qrydst = GetQueryDst(qryndx);
+    }
+
     if(threadIdx.x == tawmvNAlnPoss + 32) {
         //NOTE: reuse ccmCache to read #matched positions (tawmvNAlnPoss) written at sfragfct;
         //NOTE: use different warp; structure-specific-formatted data;

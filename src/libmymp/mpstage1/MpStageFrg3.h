@@ -81,7 +81,7 @@ public:
     virtual void Run() {
         const int simthreshold = CLOptions::GetC_TRIGGER();
         static const float thrsimilarityperc = (float)simthreshold / 100.0f;
-        static const float locgapcost = -0.8f;
+        static const float locgapcost = CLOptions::GetC_GapCost();
         //fill in DP matrix with local similarity scores:
         if(0.0f < thrsimilarityperc)
             dphub_.ExecDPSSLocal128xKernel(
@@ -139,6 +139,7 @@ protected:
     template<int nFRGS, int DPSCDIMY, int DPSCDIMX, int DATALN>
     void CalcLocalSimilarity2_frg2(
         const float thrsimilarityperc,
+        const int seedapproachstruct,
         const int ndbCposs,
         const int dbxpad,
         const int qrydst, const int dbstrdst,
@@ -154,6 +155,7 @@ protected:
         const bool secstrmatchaln,
         float* const __RESTRICT__ stack,
         const int stacksize,
+        const int windowsize,
         const int qrydst, const int dbstrdst,
         int qrylen, int dbstrlen,
         int qrypos, int rfnpos, int fraglen,
@@ -170,6 +172,7 @@ protected:
     void ProduceAlignmentUsingIndex2Reference(
         float* const __RESTRICT__ stack,
         const int stacksize,
+        const int windowsize,
         const int qrydst, const int dbstrdst,
         int qrylen, const int dbstrlen,
         int qrypos, const int /* rfnpos */, int fraglen,
@@ -186,6 +189,7 @@ protected:
     void ProduceAlignmentUsingIndex2Query(
         float* const __RESTRICT__ stack,
         const int stacksize,
+        const int windowsize,
         const int qrydst, const int dbstrdst,
         const int qrylen, int dbstrlen,
         const int /* qrypos */, int rfnpos, int fraglen,
@@ -319,6 +323,7 @@ protected:
 // thrsimilarityperc, threshold percentage of local similarity score for a 
 // fragment to be considered as one having the potential to improve superposition;
 // NOTE: `converged' if provisional score is less than the given threshold;
+// seedapproachstruct, flag for a seed approach controlling memory layout;
 // ndbCposs, total number of db structure positions in the chunk;
 // dbxpad, number of padded positions for memory alignment;
 // NOTE: memory pointers should be aligned!
@@ -330,6 +335,7 @@ template<int nFRGS, int DPSCDIMY, int DPSCDIMX, int DATALN>
 inline
 void MpStageFrg3::CalcLocalSimilarity2_frg2(
     const float thrsimilarityperc,
+    const int /* seedapproachstruct */,
     const int ndbCposs,
     const int dbxpad,
     const int qrydst, const int dbstrdst,
@@ -360,7 +366,7 @@ void MpStageFrg3::CalcLocalSimilarity2_frg2(
         (qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen || fraglen < 1)
         ? CONVERGED_SCOREDP_bitval: 0;
 
-    if(thrsimilarityperc <= 0.0f) return;
+    if(thrsimilarityperc <= 0.0f /*&& !seedapproachstruct*/) return;
 
     //actual length of fragment within which local scores are verified:
     // fraglen = lnYIts * lYdim;
@@ -390,9 +396,10 @@ void MpStageFrg3::CalcLocalSimilarity2_frg2(
         const int pibeg = ALIGN_UP(rpos, 4/*sizeof(int)*/);
         const int piend = pibeg + pidelta;
         unsigned char max1 = 0;
+        //NOTE: each byte's two least significant bits are reserved for backtracking!
         #pragma omp simd aligned(dpscoremtx:DATALN) reduction(max:max1)
         for(int pi = pibeg; pi < piend; pi++)
-            max1 = mymax(max1, (unsigned char)(dpscoremtx[pi]));
+            max1 = mymax(max1, (unsigned char)((dpscoremtx[pi]) & 0xfc));
         dpsc[ii] = max1;
     }
 
@@ -427,6 +434,7 @@ void MpStageFrg3::ProduceAlignmentUsingDynamicIndex2(
     const bool secstrmatchaln,
     float* const __RESTRICT__ stack,
     const int stacksize,
+    const int windowsize,
     const int qrydst, const int dbstrdst,
     int qrylen, int dbstrlen,
     int qrypos, int rfnpos, int fraglen,
@@ -442,26 +450,26 @@ void MpStageFrg3::ProduceAlignmentUsingDynamicIndex2(
     if(qrylen < dbstrlen) {
         if(secstrmatchaln)
             ProduceAlignmentUsingIndex2Reference<1/*SECSTRFILT*/,SCORDIMX,DATALN>(
-                stack, stacksize, qrydst, dbstrdst,
+                stack, stacksize, windowsize, qrydst, dbstrdst,
                 qrylen, dbstrlen, qrypos, rfnpos, fraglen, WRTNDX,
                 querypmbeg, bdbCpmbeg, queryndxpmbeg, bdbCndxpmbeg,
                 tfm, coords, ssas);
         else
             ProduceAlignmentUsingIndex2Reference<0/*SECSTRFILT*/,SCORDIMX,DATALN>(
-                stack, stacksize, qrydst, dbstrdst,
+                stack, stacksize, windowsize, qrydst, dbstrdst,
                 qrylen, dbstrlen, qrypos, rfnpos, fraglen, WRTNDX,
                 querypmbeg, bdbCpmbeg, queryndxpmbeg, bdbCndxpmbeg,
                 tfm, coords, ssas);
     } else {
         if(secstrmatchaln)
             ProduceAlignmentUsingIndex2Query<1/*SECSTRFILT*/,SCORDIMX,DATALN>(
-                stack, stacksize, qrydst, dbstrdst,
+                stack, stacksize, windowsize, qrydst, dbstrdst,
                 qrylen, dbstrlen, qrypos, rfnpos, fraglen, WRTNDX,
                 querypmbeg, bdbCpmbeg, queryndxpmbeg, bdbCndxpmbeg,
                 tfm, coords, ssas);
         else
             ProduceAlignmentUsingIndex2Query<0/*SECSTRFILT*/,SCORDIMX,DATALN>(
-                stack, stacksize, qrydst, dbstrdst,
+                stack, stacksize, windowsize, qrydst, dbstrdst,
                 qrylen, dbstrlen, qrypos, rfnpos, fraglen, WRTNDX,
                 querypmbeg, bdbCpmbeg, queryndxpmbeg, bdbCndxpmbeg,
                 tfm, coords, ssas);
@@ -478,6 +486,7 @@ void MpStageFrg3::ProduceAlignmentUsingDynamicIndex2(
 // building an alignment;
 // stack, stack for index;
 // stacksize, dynamically determined stack size;
+// windowsize, window size in residues;
 // qrydst, dbstrdst, distances to the beginnings of query and reference structures;
 // qrylen, dbstrlen, query and reference lengths;
 // qrypos, rfnpos, query and reference fragment starting positions;
@@ -493,6 +502,7 @@ inline
 void MpStageFrg3::ProduceAlignmentUsingIndex2Reference(
     float* const __RESTRICT__ stack,
     const int stacksize,
+    const int windowsize,
     const int qrydst, const int dbstrdst,
     int qrylen, const int dbstrlen,
     int qrypos, const int /* rfnpos */, int fraglen,
@@ -505,7 +515,7 @@ void MpStageFrg3::ProduceAlignmentUsingIndex2Reference(
     float* const __RESTRICT__ coords,
     char* const __RESTRICT__ ssas)
 {
-    fraglen = mymin(dbstrlen, SCORDIMX);
+    fraglen = mymin(dbstrlen, windowsize);
     qrypos = mymax(0, qrypos - (fraglen>>1));
     qrylen = mymin(qrylen, qrypos + fraglen);
     qrypos = mymax(0, qrylen - fraglen);
@@ -579,6 +589,7 @@ void MpStageFrg3::ProduceAlignmentUsingIndex2Reference(
 // building an alignment;
 // stack, stack for index;
 // stacksize, dynamically determined stack size;
+// windowsize, window size in residues;
 // qrydst, dbstrdst, distances to the beginnings of query and reference structures;
 // qrylen, dbstrlen, query and reference lengths;
 // qrypos, rfnpos, query and reference fragment starting positions;
@@ -594,6 +605,7 @@ inline
 void MpStageFrg3::ProduceAlignmentUsingIndex2Query(
     float* const __RESTRICT__ stack,
     const int stacksize,
+    const int windowsize,
     const int qrydst, const int dbstrdst,
     const int qrylen, int dbstrlen,
     const int /* qrypos */, int rfnpos, int fraglen,
@@ -606,7 +618,7 @@ void MpStageFrg3::ProduceAlignmentUsingIndex2Query(
     float* const __RESTRICT__ coords,
     char* const __RESTRICT__ ssas)
 {
-    fraglen = mymin(qrylen, SCORDIMX);
+    fraglen = mymin(qrylen, windowsize);
     //qrypos = mymax(0, qrypos - (fraglen>>1));
     rfnpos = mymax(0, rfnpos - (fraglen>>1));
     dbstrlen = mymin(dbstrlen, rfnpos + fraglen);

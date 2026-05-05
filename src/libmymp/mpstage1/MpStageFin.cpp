@@ -136,6 +136,8 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase1Kernel(
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int sfragpos = sfragfct * sfragstep;
@@ -154,7 +156,7 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase1Kernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg): GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -368,6 +370,8 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase2Kernel(
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int tid = omp_get_thread_num();
@@ -391,7 +395,7 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase2Kernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg): GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -609,6 +613,8 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase2_fullsearchKernel(
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int tid = omp_get_thread_num();
@@ -629,7 +635,7 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase2_fullsearchKernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg): GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -836,6 +842,8 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase1Kernel(
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int sfragpos = sfragfct * sfragstep;
@@ -854,7 +862,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase1Kernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -919,7 +927,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase1Kernel(
                     //calculate the score for the larger structure of the two:
                     //threshold calculated for the greater length
                     const int greaterlen = mymax(qrylenorg, dbstrlenorg);
-                    const float g0 = GetD0fin(greaterlen, greaterlen);
+                    const float g0 = GetD0fin(greaterlen, greaterlen, type);
                     const float g02 = SQRD(g0);
                     float gbest = best;//score calculated for the other structure
 
@@ -1188,6 +1196,8 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearchKe
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int tid = omp_get_thread_num();
@@ -1207,7 +1217,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearchKe
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float best = -1.0f;//best score obtained
@@ -1224,7 +1234,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2_fullsearchKe
                     //calculate the score for the larger structure of the two:
                     //threshold calculated for the greater length
                     const int greaterlen = mymax(qrylenorg, dbstrlenorg);
-                    const float g0 = GetD0fin(greaterlen, greaterlen);
+                    const float g0 = GetD0fin(greaterlen, greaterlen, type);
                     const float g02 = SQRD(g0);
                     float gbest = best;//score calculated for the other structure
 
@@ -1400,6 +1410,8 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2Kernel(
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int tid = omp_get_thread_num();
@@ -1422,7 +1434,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2Kernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float best = -1.0f;//best score obtained
@@ -1439,7 +1451,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2Kernel(
                     //calculate the score for the larger structure of the two:
                     //threshold calculated for the greater length
                     const int greaterlen = mymax(qrylenorg, dbstrlenorg);
-                    const float g0 = GetD0fin(greaterlen, greaterlen);
+                    const float g0 = GetD0fin(greaterlen, greaterlen, type);
                     const float g02 = SQRD(g0);
                     float gbest = best;//score calculated for the other structure
 
@@ -1598,6 +1610,8 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearchKer
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int tid = omp_get_thread_num();
@@ -1611,7 +1625,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearchKer
                     bestorg = wrkmemaux[mloc0 + tawmvGrandBest * ndbCstrs_ + ri];
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+                    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float best = bestorg;//best score obtained
@@ -1652,7 +1666,7 @@ void MpStageFin::ProductionFragmentBasedDPAlignmentRefinementPhase2_logsearchKer
                     //calculate the score for the larger structure of the two:
                     //threshold calculated for the greater length
                     const int greaterlen = mymax(qrylenorg, dbstrlenorg);
-                    const float g0 = GetD0fin(greaterlen, greaterlen);
+                    const float g0 = GetD0fin(greaterlen, greaterlen, type);
                     const float g02 = SQRD(g0);
                     float gbest = best;//score calculated for the other structure
 
@@ -1753,6 +1767,8 @@ void MpStageFin::Production2TMscoresKernel(
                 const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                 const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                 const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                const int type = GetMoleculeType(typexr);
 
                 enum {qrypos = 0, rfnpos = 0};
                 int qrylen, dbstrlen;
@@ -1768,7 +1784,7 @@ void MpStageFin::Production2TMscoresKernel(
                     tfm[f] = tfmmem[mloc0 + f];
 
                 //threshold calculated for the original lengths
-                const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+                const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
                 const float d02 = SQRD(d0);
 
                 Calc2TMscoresUnrl_Complete<XDIM,memalignment>(
@@ -1782,7 +1798,7 @@ void MpStageFin::Production2TMscoresKernel(
                 //calculate the score for the larger structure of the two:
                 //threshold calculated for the greater length
                 const int greaterlen = mymax(qrylenorg, dbstrlenorg);
-                const float g0 = GetD0fin(greaterlen, greaterlen);
+                const float g0 = GetD0fin(greaterlen, greaterlen, type);
                 const float g02 = SQRD(g0);
                 float gbest = best;//score calculated for the other structure
 

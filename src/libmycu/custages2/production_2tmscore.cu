@@ -68,11 +68,27 @@ void Production2TMscores(
     //NOTE: no sync as long cache cell for convergence is not overwritten;
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse cache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)scvCache + tmpcslot);
-        GetQueryLenDst(qryndx, (int*)scvCache + tmpcslot + 2);
+    if(threadIdx.x == 0) {
+        ((int*)scvCache)[tmpcslot+0] = GetDbStrLength(dbstrndx);
+        ((int*)scvCache)[tmpcslot+1] = GetDbStrDst(dbstrndx);
+    }
+#if (CUDP_PRODUCTION_2TMSCORE_DIM_X >= 128)
+    if(threadIdx.x == 96)
+#elif (CUDP_PRODUCTION_2TMSCORE_DIM_X >= 64)
+    if(threadIdx.x == 32)
+#else
+    if(threadIdx.x == 0)
+#endif
+        ((int*)scvCache)[tmpcslot+2] = GetQueryLength(qryndx);
+#if (CUDP_PRODUCTION_2TMSCORE_DIM_X >= 64)
+    if(threadIdx.x == 32) {
+#else
+    if(threadIdx.x == 0) {
+#endif
+        ((int*)scvCache)[tmpcslot+3] = qrydst = GetQueryDst(qryndx);
+        //NOTE: type determined by one chain, as chains of different type not aligned!
+        ((int*)scvCache)[tmpcslot+4] = GetMoleculeType(GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst));
     }
 
     //NOTE: use a different warp for structure-specific-formatted data;
@@ -117,11 +133,12 @@ void Production2TMscores(
     qrylen = dbstrlen = scvCache[tawmvNAlnPoss];
     dbstrlenorg = ((int*)scvCache)[tmpcslot+0];
     qrylenorg = ((int*)scvCache)[tmpcslot+2];
+    const int type = ((int*)scvCache)[tmpcslot+4];
 
     __syncthreads();
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0fin(qrylenorg, dbstrlenorg);
+    const float d0 = GetD0fin(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
 
 
@@ -139,7 +156,7 @@ void Production2TMscores(
     //calculate the score for the larger structure of the two:
     //threshold calculated for the greater length
     const int greaterlen = myhdmax(qrylenorg, dbstrlenorg);
-    const float g0 = GetD0fin(greaterlen, greaterlen);
+    const float g0 = GetD0fin(greaterlen, greaterlen, type);
     const float g02 = SQRD(g0);
     float gbest = best;//score calculated for the other structure
 

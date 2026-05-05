@@ -14,4 +14,4 @@ add_library( util STATIC
 
 # Make sure the compiler can find include files for the library
 # when other libraries or executables link to it
-target_include_directories( util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories( util PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})

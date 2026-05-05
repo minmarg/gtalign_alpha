@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -31,6 +31,7 @@
 #include <thread>
 
 #include "extzlib/zlib.h"
+#include "libutil/CLOptions.h"
 #include "libutil/mydirent.h"
 #include "libutil/alpha.h"
 
@@ -294,7 +295,8 @@ bool FlexDataRead::ReadDataPDB(
     static const int teropt = CLOptions::GetI_TER();
     static const int splitopt = CLOptions::GetI_SPLIT();
     static const int hetatm = CLOptions::GetI_HETATM();
-    static const std::string satom = CLOptions::GetI_ATOM_PROT();
+    static const std::string satom = CLOptions::GetI_AATOM();
+    static const std::string natom = CLOptions::GetI_NATOM();
     const bool usechid = !(teropt == CLOptions::istEOF &&
         (splitopt == CLOptions::issaNoSplit || splitopt == CLOptions::issaByMODEL));
     const bool usemodn = !(teropt == CLOptions::istEOF &&
@@ -305,6 +307,7 @@ bool FlexDataRead::ReadDataPDB(
     //static std::string strcoord(9, 0);//allocate space once for coordinate
 
     assert(satom.size()==4);
+    assert(natom.size()==4);
 
     enum {szmod = 4};
     char strmodel[szmod] = {0};//model serial number string
@@ -442,7 +445,7 @@ bool FlexDataRead::ReadDataPDB(
             continue;//this is not an atom section
         }
 
-        if(memcmp(p+12,satom.c_str(),4) != 0) {
+        if(memcmp(p+12,satom.c_str(),4) != 0 && memcmp(p+12,natom.c_str(),4) != 0) {
             profile_buffer_.incposnl((size_t)(p-pbeg) + sfflnwidth);
             continue;//not the atom of interest
         }
@@ -472,7 +475,7 @@ bool FlexDataRead::ReadDataPDB(
                 if(cond1) lfSetEof(false);
                 switch(bsd.FinalizeCrntStructure(
                         currentfilendx_, clustering_? structcounter_[currentfilendx_]: 0,
-                        lfGetGlobID(moltype), db_entrydesc_, 
+                        lfGetGlobID(moltype), moltype, db_entrydesc_, 
                         std::string(1,prevchidx), std::string(strmodelprev), 
                         usechid, usemodn,  queryblocks, querypmbegs, querypmends))
                 {
@@ -502,10 +505,15 @@ bool FlexDataRead::ReadDataPDB(
             chord++;
         }
 
-        if(p[17]==' ' && (p[18]==' '||p[18]=='D')) moltype++;
-        else moltype--;
+        int restype = 0;
+        if(CLOptions::GetI_MOL() == CLOptions::imtProtein) restype = -1;
+        else if(CLOptions::GetI_MOL() == CLOptions::imtNucleicAcid) restype = 1;
+        else if(p[17]==' ' && (p[18]==' '||p[18]=='D')) restype = 1;
+        else restype = -1;
 
-        if(!bsd.AddOneResidue(maxstrlen_, resd, resnum, insc, chid, chord, coords)) {
+        moltype += restype;
+
+        if(!bsd.AddOneResidue(maxstrlen_, resd, resnum, restype, insc, chid, chord, coords)) {
             lfSetEof(PMBatchStrData::pmbsdfAbandoned);
             return true;
         }
@@ -515,7 +523,7 @@ bool FlexDataRead::ReadDataPDB(
 
     switch(bsd.FinalizeCrntStructure(
             currentfilendx_, clustering_? structcounter_[currentfilendx_]: 0,
-            lfGetGlobID(moltype), db_entrydesc_,
+            lfGetGlobID(moltype), moltype, db_entrydesc_,
             std::string(1,prevchidx), std::string(strmodelprev),
             usechid, usemodn,  queryblocks, querypmbegs, querypmends))
     {
@@ -555,7 +563,8 @@ bool FlexDataRead::ReadDataCIF(
     static const int teropt = CLOptions::GetI_TER();
     static const int splitopt = CLOptions::GetI_SPLIT();
     static const int hetatm = CLOptions::GetI_HETATM();
-    static const std::string satom = CLOptions::GetI_ATOM_PROT_trimmed();
+    static const std::string satom = CLOptions::GetI_AATOM_trimmed();
+    static const std::string natom = CLOptions::GetI_NATOM_trimmed();
     const bool usechid = !(teropt == CLOptions::istEOF &&
         (splitopt == CLOptions::issaNoSplit || splitopt == CLOptions::issaByMODEL));
     const bool usemodn = !(teropt == CLOptions::istEOF &&
@@ -567,6 +576,7 @@ bool FlexDataRead::ReadDataCIF(
     //static std::string strcoord(9, 0);//allocate space once for coordinate
 
     assert(satom.size()<=4);
+    assert(natom.size()<=4);
 
     //statics moved to constructor:
     //static int fieldndxs[nciffields] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
@@ -609,16 +619,17 @@ bool FlexDataRead::ReadDataCIF(
             fieldndxs_[mysetflag] = 1;
     };
 
-    //check atom type; return true if it matches satom
-    std::function<bool(const char*)> lfCheckAtom = [](const char* pt) {
-        if(*pt == '"') pt++;
-        for(size_t i = 0; i < satom.size(); i++)
-            if(satom[i] != *pt++)
+    //check atom type; return true if it matches <atom>
+    std::function<bool(const char*, const std::string&)> lfCheckAtom =
+        [](const char* pt, const std::string& atom) {
+            if(*pt == '"') pt++;
+            for(size_t i = 0; i < atom.size(); i++)
+                if(atom[i] != *pt++)
+                    return false;
+            if(*pt!='"' && *pt!=' ' && *pt!='\t' && *pt!='\n' && *pt!='\r')
                 return false;
-        if(*pt!='"' && *pt!=' ' && *pt!='\t' && *pt!='\n' && *pt!='\r')
-            return false;
-        return true;
-    };
+            return true;
+        };
 
     //print warning only without setting eof
     std::function<void(int)> lfWarning = [this,&strchainprev](int warn) {
@@ -764,7 +775,8 @@ bool FlexDataRead::ReadDataCIF(
         }
 
         if(ptksndxs <= fieldndxs_[label_atom_id] ||
-           lfCheckAtom(ptks_[fieldndxs_[label_atom_id]]) == false) 
+          ((lfCheckAtom(ptks_[fieldndxs_[label_atom_id]], satom) == false) &&
+           (lfCheckAtom(ptks_[fieldndxs_[label_atom_id]], natom) == false)))
         {
             profile_buffer_.incposnl((size_t)(p-pbeg));
             continue;//not the atom of interest
@@ -857,7 +869,7 @@ bool FlexDataRead::ReadDataCIF(
             if(seteof) lfSetEof(false);
             switch(bsd.FinalizeCrntStructure(
                     currentfilendx_, clustering_? structcounter_[currentfilendx_]: 0,
-                    lfGetGlobID(moltype), db_entrydesc_, 
+                    lfGetGlobID(moltype), moltype, db_entrydesc_, 
                     strchainprev, strmodelprev, usechid, usemodn,
                     queryblocks, querypmbegs, querypmends)) 
             {
@@ -884,11 +896,16 @@ bool FlexDataRead::ReadDataCIF(
         strmodelprev = strmodel_;
         strchainprev = strchain_;
 
+        int restype = 0;
         sztk = (size_t)(ptkends_[fieldndxs_[label_comp_id]]-ptks_[fieldndxs_[label_comp_id]]);
-        if(sztk < 2 || (sztk==2 && *ptks_[fieldndxs_[label_comp_id]]=='D')) moltype++;
-        else moltype--;
+        if(CLOptions::GetI_MOL() == CLOptions::imtProtein) restype = -1;
+        else if(CLOptions::GetI_MOL() == CLOptions::imtNucleicAcid) restype = 1;
+        else if(sztk < 2 || (/*sztk==2 && */*ptks_[fieldndxs_[label_comp_id]]=='D')) restype = 1;
+        else restype = -1;
 
-        if(!bsd.AddOneResidue(maxstrlen_, resd, resnum, insc, chid, chord, coords)) {
+        moltype += restype;
+
+        if(!bsd.AddOneResidue(maxstrlen_, resd, resnum, restype, insc, chid, chord, coords)) {
             lfSetEof(PMBatchStrData::pmbsdfAbandoned);
             return true;
         }
@@ -898,7 +915,7 @@ bool FlexDataRead::ReadDataCIF(
 
     switch(bsd.FinalizeCrntStructure(
             currentfilendx_, clustering_? structcounter_[currentfilendx_]: 0,
-            lfGetGlobID(moltype), db_entrydesc_, 
+            lfGetGlobID(moltype), moltype, db_entrydesc_, 
             strchainprev, strmodelprev, usechid, usemodn,
             queryblocks, querypmbegs, querypmends))
     {

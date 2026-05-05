@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -55,11 +55,13 @@
 // NOTE: the modulo-2^8 dp matrix is written, hence it is unsuitable for
 // local calculations spanning >256 (when scores are within [0,1])!
 // NOTE: memory pointers should be aligned!
+// NASEQ, template parameter, flag of using sequence similarity for nucleic acids;
 // tmpdpdiagbuffers, temporary buffers for last calculated diagonal scores;
 // tmpdpbotbuffer, temporary buffers for last calculated bottom scores;
 // maxscoordsbuf, coordinates (positions) of maximum alignment scores;
 // dpscoremtx, rounded dp score matrix;
 // 
+template<int NASEQ>
 __global__
 void ExecDPSSLocal3264x(
     const uint blkdiagnum,
@@ -93,6 +95,7 @@ void ExecDPSSLocal3264x(
     int qrylen, dbstrlen;//query and reference length
     //distances in positions to the beginnings of the query and reference structures:
     uint qrydst, dbstrdst;
+    int qrytype = gtmtProtein;
 
 
     //check convergence first
@@ -102,7 +105,7 @@ void ExecDPSSLocal3264x(
         diag1Cache[0] = wrkmemaux[mloc0 + dbstrndx];
     }
 
-#if (CUDP_2DCACHE_DIM_D <= 32)
+#if (CUDP_2DCACHE_DIM_D <= lWarpsize)
     __syncwarp();
 #else
     __syncthreads();
@@ -113,14 +116,19 @@ void ExecDPSSLocal3264x(
         return;
 
 
-    //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse cache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)diag2Cache);
-        GetQueryLenDst(qryndx, (int*)diag2Cache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)diag2Cache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)diag2Cache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)diag2Cache)[2] = GetQueryLength(qryndx);
+        ((int*)diag2Cache)[3] = qrydst = GetQueryDst(qryndx);
+        if(NASEQ) {
+            // ((int*)diag2Cache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
+            ((int*)diag2Cache)[5] = GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst);
+        }
     }
 
-#if (CUDP_2DCACHE_DIM_D <= 32)
+#if (CUDP_2DCACHE_DIM_D <= lWarpsize)
     __syncwarp();
 #else
     __syncthreads();
@@ -129,8 +137,10 @@ void ExecDPSSLocal3264x(
     //NOTE: no bank conflict when two threads from the same warp access the same address;
     dbstrlen = ((int*)diag2Cache)[0]; dbstrdst = ((int*)diag2Cache)[1];
     qrylen = ((int*)diag2Cache)[2]; qrydst = ((int*)diag2Cache)[3];
+    //NOTE: qrytype implies the same type for reference upon type compatibility verification (default)!
+    if(NASEQ) qrytype = GetMoleculeType(((int*)diag2Cache)[5]);
 
-#if (CUDP_2DCACHE_DIM_D <= 32)
+#if (CUDP_2DCACHE_DIM_D <= lWarpsize)
     __syncwarp();
 #else
     __syncthreads();
@@ -176,9 +186,10 @@ void ExecDPSSLocal3264x(
     //x is now the position this thread will process
     x += threadIdx.x;
 
-    if(0 <= qpos && qpos < qrylen)
-        DPLocCacheQrySS(qrySS, qpos + qrydst);
-    else
+    if(0 <= qpos && qpos < qrylen) {
+        if(NASEQ == 0 || qrytype == gtmtProtein) DPLocCacheQrySS(qrySS, qpos + qrydst);
+        else DPLocCacheQryRsd(qrySS, qpos + qrydst);
+    } else
         DPLocInitSS<0/*shift*/,pmvLOOP>(qrySS);
 
     //db reference structure position corresponding to the oblique block's
@@ -189,15 +200,17 @@ void ExecDPSSLocal3264x(
     //offset (w/o a factor) to the beginning of the data along the y axis wrt query qryndx: 
     int yofff = dblen * qryndx;
 
-    if(0 <= x && x < dbstrlen)
-        DPLocCacheRfnSS<0/*shift*/>(rfnSS, dbpos);
-    else
+    if(0 <= x && x < dbstrlen) {
+        if(NASEQ == 0 || qrytype == gtmtProtein) DPLocCacheRfnSS<0/*shift*/>(rfnSS, dbpos);
+        else DPLocCacheRfnRsd<0/*shift*/>(rfnSS, dbpos);
+    } else
         DPLocInitSS<0/*shift*/,0/*VALUE*/>(rfnSS);
 
-    if(0 <= (x+CUDP_2DCACHE_DIM_D) && (x+CUDP_2DCACHE_DIM_D) < dbstrlen)
+    if(0 <= (x+CUDP_2DCACHE_DIM_D) && (x+CUDP_2DCACHE_DIM_D) < dbstrlen) {
         //NOTE: blockDim.x==CUDP_2DCACHE_DIM_D
-        DPLocCacheRfnSS<CUDP_2DCACHE_DIM_D>(rfnSS, dbpos + CUDP_2DCACHE_DIM_D);
-    else
+        if(NASEQ == 0 || qrytype == gtmtProtein) DPLocCacheRfnSS<CUDP_2DCACHE_DIM_D>(rfnSS, dbpos + CUDP_2DCACHE_DIM_D);
+        else DPLocCacheRfnRsd<CUDP_2DCACHE_DIM_D>(rfnSS, dbpos + CUDP_2DCACHE_DIM_D);
+    } else
         DPLocInitSS<CUDP_2DCACHE_DIM_D/*shift*/,0/*VALUE*/>(rfnSS);
 
 
@@ -248,7 +261,7 @@ void ExecDPSSLocal3264x(
     for(int i = 0; i < ilim/*CUDP_2DCACHE_DIM_X*/; i++)
     {
         float val1, val2;
-        // int btck = dpbtckSTOP;
+        uint btck = dpbtckDIAG;
 
         if(threadIdx.x+1 == CUDP_2DCACHE_DIM_D) {
             pdiag1[GetBufferNdx<DDIM>(dpdsssStateMM,threadIdx.x+1)] =
@@ -260,8 +273,7 @@ void ExecDPSSLocal3264x(
 
         //MM state update (diagonal direction)
         val1 += pdiag2[GetBufferNdx<DDIM>(dpdsssStateMM,threadIdx.x+1)];
-        if(val1 < 0.0f) val1 = 0.0f;
-        // if(val1) btck = dpbtckDIAG;
+        if(val1 < 0.0f) {val1 = 0.0f; btck = dpbtckSTOP;}
 
         //sync to update pdiag1; also no read for pdiag2 in this iteration
 #if (CUDP_2DCACHE_DIM_D <= 32)
@@ -272,19 +284,17 @@ void ExecDPSSLocal3264x(
 
         //IM state update (left direction)
         val2 = pdiag1[GetBufferNdx<DDIM>(dpdsssStateMM,threadIdx.x)] + gapcost;
-        if(val1 < val2) val1 = val2;
-        // myhdmaxassgn(val1, val2, btck, (int)dpbtckLEFT);
+        if(val1 < val2) {val1 = val2; btck = dpbtckLEFT;}
 
         //MI state update (up direction)
         val2 = pdiag1[GetBufferNdx<DDIM>(dpdsssStateMM,threadIdx.x+1)] + gapcost;
-        if(val1 < val2) val1 = val2;
-        // myhdmaxassgn(val1, val2, btck, (int)dpbtckUP);
+        if(val1 < val2) {val1 = val2; btck = dpbtckUP;}
 
         //WRITE: write max value
         pdiag2[GetBufferNdx<DDIM>(dpdsssStateMM,threadIdx.x)] = val1;
 
-        //WRITE
-        dpsCache[threadIdx.x][i] = (char)(((unsigned int)val1) & 255);//val1%256
+        //WRITE: write btck in the two least significant bits:
+        dpsCache[threadIdx.x][i] = (char)((((unsigned int)val1) & 0xfc) | (btck));
 
         if(threadIdx.x == 0) {
             //WRITE
@@ -359,4 +369,17 @@ void ExecDPSSLocal3264x(
 }
 
 // =========================================================================
+// -------------------------------------------------------------------------
+// Instantiations
+// 
+#define INSTANTIATE_ExecDPSSLocal3264x(tpNASEQ) \
+    template __global__ void ExecDPSSLocal3264x<tpNASEQ>( \
+        const uint blkdiagnum, const uint ndbCstrs, const uint ndbCposs, const uint dbxpad, \
+        const uint maxnsteps, const float gapcost, \
+        const float* __restrict__ wrkmemaux, \
+        float* __restrict__ tmpdpdiagbuffers, \
+        float* __restrict__ tmpdpbotbuffer, \
+        char* __restrict__ dpscoremtx);
+
+INSTANTIATE_ExecDPSSLocal3264x(0);
 // -------------------------------------------------------------------------

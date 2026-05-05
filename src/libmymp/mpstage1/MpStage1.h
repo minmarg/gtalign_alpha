@@ -9,6 +9,7 @@
 #include "libutil/mybase.h"
 #include "libgenp/gproc/gproc.h"
 #include "libgenp/gdats/PM2DVectorFields.h"
+#include "libgenp/gdats/PMBatchStrData.h"
 #include "libmymp/mpproc/mpprocconfbase.h"
 #include "libmymp/mpstages/transformbase.h"
 #include "libmymp/mpstages/scoringbase.h"
@@ -21,6 +22,7 @@
 // class MpStage1 for implementing structure comparison at stage 1
 //
 class MpStage1: public MpStageBase {
+public:
     // constants defining the type of refinement: initial call, initial call on 
     // aligned positions, and iterative refinement involving DP:
     enum {
@@ -28,6 +30,8 @@ class MpStage1: public MpStageBase {
         mpstg1REFINE_INITIAL_DP,
         mpstg1REFINE_ITERATIVE_DP,
     };
+
+    enum {s3mQRYNDX, s3mRFNNDX, s3mTotal};
 
 public:
     MpStage1(
@@ -70,6 +74,7 @@ public:
     void Preinitialize1(const bool condition4filter1) {
         Preinitialize1Kernel(
             condition4filter1,
+            querypmbeg_, bdbCpmbeg_,
             wrkmemtmibest_, tfmmem_, alndatamem_, wrkmemaux_);
     }
 
@@ -159,6 +164,8 @@ protected:
 private:
     void Preinitialize1Kernel(
         const bool condition4filter1,
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
         float* const __RESTRICT__ wrkmemtmibest,
         float* const __RESTRICT__ tfmmem,
         float* const __RESTRICT__ alndatamem,
@@ -187,6 +194,19 @@ private:
 
 protected:
     // {{---------------------------------------------
+    template<int nEFFDS, int XDIM, int DATALN>
+    void CalcCCMatricesLocallyAligned_Complete(
+        const float thrsimilarityperc,
+        const uint ndbCposs, const uint dbxpad,
+        const int qrydst, const int dbstrdst, int fraglen,
+        const int qrylen, const int dbstrlen,
+        const int qrypos, const int rfnpos,
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
+        const char* const __RESTRICT__ dpscoremtx,
+        int (* __RESTRICT__ poss)[XDIM],
+        float (* __RESTRICT__ ccm)[XDIM]);
+
     template<int nEFFDS, int XDIM, int DATALN>
     void CalcCCMatrices_Complete(
         const int qrydst,
@@ -313,8 +333,15 @@ protected:
     // }}---------------------------------------------
 
 
-    template<int XDIM, int DATALN>
+    template<int XDIM, int DATALN, int UPDATENPOS = 0>
     void UpdateCCMCache(
+        int qrypos, int rfnpos,
+        const char* const * const __RESTRICT__ querypmbeg,
+        const char* const * const __RESTRICT__ bdbCpmbeg,
+        float (* __RESTRICT__ ccm)[XDIM], int pi);
+
+    template<int XDIM, int DATALN, int UPDATENPOS = 0>
+    void UpdateCCMCache1(
         int qrypos, int rfnpos,
         const char* const * const __RESTRICT__ querypmbeg,
         const char* const * const __RESTRICT__ bdbCpmbeg,
@@ -350,6 +377,116 @@ protected:
 // -------------------------------------------------------------------------
 // INLINES ...
 // -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// CalcCCMatricesLocallyAligned_Complete: calculate cross-covariance matrix 
+// between query and reference based on local structural alignment;
+// thrsimilarityperc, minimum similarity threshold;
+// ndbCstrs, total number of reference structures in the chunk;
+// ndbCposs, total number of references' positions in the chunk;
+// dbxpad, number of padded positions for memory alignment;
+// qrydst, distances in positions to the beginnings of the query structures;
+// dbstrdst, distances in positions to the beginnings of the reference structures;
+// fraglen, #aligned positions (fragment length);
+// qrylen, dbstrlen, query and reference lengths;
+// qrypos, rfnpos, starting query and reference positions;
+// dpscoremtx, global matrix (across molecules) of local dp scores;
+// ccm, cache for the cross-covarinace matrix and related data;
+// 
+template<int nEFFDS, int XDIM, int DATALN>
+inline
+void MpStage1::CalcCCMatricesLocallyAligned_Complete(
+    const float thrsimilarityperc,
+    const uint ndbCposs,
+    const uint dbxpad,
+    const int qrydst,
+    const int dbstrdst,
+    int fraglen,
+    const int qrylen, const int dbstrlen,
+    const int qrypos, const int rfnpos,
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
+    const char* const __RESTRICT__ dpscoremtx,
+    int (* __RESTRICT__ poss)[XDIM],
+    float (* __RESTRICT__ ccm)[XDIM])
+{
+    enum {NSCORESCHECK = 4, log2NSCORESCHECK = 2};
+
+    //(1. positions obtained)
+    if(qrylen < qrypos + fraglen && dbstrlen < rfnpos + fraglen) 
+        fraglen = mymax(qrylen - qrypos, dbstrlen - rfnpos);
+
+    fraglen >>= log2NSCORESCHECK;//divide into NSCORESCHECK equal-length fragments
+
+    //2. get max over 4 (NSCORESCHECK) evenly located local scores 
+    const int dblen = ndbCposs + dbxpad;
+    int y = qrypos, x = rfnpos; float vr = 0.0;
+
+    #pragma omp simd aligned(dpscoremtx:DATALN) reduction(max:vr)
+    for(int f = 0; f < NSCORESCHECK; f++) {
+        int yt = mymin(qrylen - 1, qrypos + (f + 1) * fraglen);
+        int xt = mymin(dbstrlen - 1, rfnpos + (f + 1) * fraglen);
+        int rpos = (qrydst + yt/*qrypos*/) * dblen + dbstrdst + xt/*rfnpos*/;
+        float vrt = (float)(unsigned char)(dpscoremtx[rpos] & 0xfc);//two least significant bits for backtracking!
+        if(vr < vrt) { vr = vrt; y = yt; x = xt; }
+    }
+
+    //initialize cache:
+    for(int f = 0; f < nEFFDS; f++) {
+        #pragma omp simd
+        for(int pi = 0; pi < XDIM; pi++) ccm[f][pi] = 0.0f;
+    }
+
+    //3. backtrace over local alignment
+    int alnlen = 0;
+    char btck = dpbtckDIAG;
+    while(btck != dpbtckSTOP) {
+        int ndx = 0;
+        //record matched positions
+        for(; ndx < XDIM;) {
+            if(y < qrypos/*0*/ || x < rfnpos/*0*/) {
+                btck = dpbtckSTOP;
+                break;
+            }
+            int rpos = (qrydst + y) * dblen + dbstrdst + x;
+            btck = dpscoremtx[rpos] & 0x3;//READ
+            if(btck == dpbtckSTOP) break;
+            if(btck == dpbtckUP) { y--; continue; }
+            else if(btck == dpbtckLEFT) { x--; continue; }
+            //(btck == dpbtckDIAG)
+            poss[s3mQRYNDX][ndx] = y;
+            poss[s3mRFNNDX][ndx] = x;
+            x--; y--; ndx++;
+        }
+
+        //write the coordinates of the matched positions to memory
+        #pragma omp simd
+        for(int pi = 0; pi < ndx; pi++) {
+            //READ coordinates
+            int ypos = qrydst + poss[s3mQRYNDX][pi];
+            int xpos = dbstrdst + poss[s3mRFNNDX][pi];
+            UpdateCCMCache1<XDIM,PMBSdatalignment,1/*UPDATENPOS*/>(
+                ypos, xpos,  querypmbeg, bdbCpmbeg,  ccm, pi);
+        }
+
+        //#aligned positions have increased by ndx
+        alnlen += ndx;
+    }//while(btck != dpbtckSTOP)
+
+    if(alnlen < 1 || (thrsimilarityperc && alnlen < mymin(16, fraglen))) {
+        ccm[twmvNalnposs][0] = 0.0f;
+        return;
+    }
+
+    //4. sum reduction for each field
+    for(int f = 0; f < nEFFDS; f++) {
+        float sum = 0.0f;
+        #pragma omp simd reduction(+:sum)
+        for(int pi = 0; pi < XDIM; pi++) sum += ccm[f][pi];
+        //write sum back to ccm
+        ccm[f][0] = sum;
+    }
+}
+
 // -------------------------------------------------------------------------
 // CalcCCMatrices_Complete: calculate cross-covariance matrix 
 // between the query and reference structures for a given fragment;
@@ -473,7 +610,7 @@ void MpStage1::CalcCCMatricesRefined_Complete(
   aligned(querypmbeg,bdbCpmbeg:DATALN) \
   notinbranch
 #endif
-template<int XDIM, int DATALN>
+template<int XDIM, int DATALN, int UPDATENPOS>
 inline
 void MpStage1::UpdateCCMCache(
     int qrypos, int rfnpos,
@@ -489,7 +626,39 @@ void MpStage1::UpdateCCMCache(
     float ry = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DY>(bdbCpmbeg, rfnpos);
     float rz = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DZ>(bdbCpmbeg, rfnpos);
 
-    UpdateCCMCacheHelper<XDIM>(qx, qy, qz,  rx, ry, rz,  ccm, pi);
+    UpdateCCMCacheHelper<XDIM,UPDATENPOS>(qx, qy, qz,  rx, ry, rz,  ccm, pi);
+}
+
+// -------------------------------------------------------------------------
+// UpdateCCMCache1: update cross-covariance cache data given query and 
+// reference coordinates, respectively;
+// NOTE: qrypos,rfnpos: no longer linear!
+//
+#if defined(OS_MS_WINDOWS)
+#define OMPDECLARE_MpStage1_UpdateCCMCache1
+#else 
+#pragma omp declare simd linear(pi:1) \
+  uniform(querypmbeg,bdbCpmbeg,ccm) \
+  aligned(querypmbeg,bdbCpmbeg:DATALN) \
+  notinbranch
+#endif
+template<int XDIM, int DATALN, int UPDATENPOS>
+inline
+void MpStage1::UpdateCCMCache1(
+    int qrypos, int rfnpos,
+    const char* const * const __RESTRICT__ querypmbeg,
+    const char* const * const __RESTRICT__ bdbCpmbeg,
+    float (* __RESTRICT__ ccm)[XDIM], int pi)
+{
+    float qx = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DX>(querypmbeg, qrypos);
+    float qy = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DY>(querypmbeg, qrypos);
+    float qz = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DZ>(querypmbeg, qrypos);
+
+    float rx = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DX>(bdbCpmbeg, rfnpos);
+    float ry = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DY>(bdbCpmbeg, rfnpos);
+    float rz = PMBatchStrData::GetFieldAt<float,pmv2DCoords+pmv2DZ>(bdbCpmbeg, rfnpos);
+
+    UpdateCCMCacheHelper<XDIM,UPDATENPOS>(qx, qy, qz,  rx, ry, rz,  ccm, pi);
 }
 
 

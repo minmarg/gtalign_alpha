@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -12,6 +12,11 @@
 #include <string>
 
 #include "myassert.h"
+
+enum {
+    lWarpsize = 32,//warp size
+    llog2warpsize = 5//log2(lwarpsize)
+};
 
 // evaluate err anyway; if it does not evaluate to cudaSuccess, reset the 
 // error by calling cudaGetLastError() and return false:

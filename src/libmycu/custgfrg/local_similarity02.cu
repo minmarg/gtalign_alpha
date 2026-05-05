@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -23,6 +23,7 @@
 // NOTE: CUSF_TBSP_LOCAL_SIMILARITY_XDIM should be 32: warp-level sync used;
 // thrsimilarityperc, threshold percentage of local similarity score for a 
 // fragment to be considered as one having the potential to improve superposition;
+// seedapproachstruct, flag for a seed approach controlling memory layout;
 // depth, superposition depth for calculating query and reference positions;
 // ndbCstrs, total number of reference structures in the chunk;
 // ndbCposs, total number of db structure positions in the chunk;
@@ -38,6 +39,7 @@
 __global__
 void CalcLocalSimilarity2_frg2(
     const float thrsimilarityperc,
+    const int seedapproachstruct,
     const int depth,
     const uint ndbCstrs,
     const uint ndbCposs,
@@ -60,10 +62,10 @@ void CalcLocalSimilarity2_frg2(
     //reference serial number
     const uint dbstrndx = blockIdx.x;
     const uint sfragfct = blockIdx.y;//fragment factor
-    const uint sfragfct0 = sfragfct & (~1);
-    const uint sfragfct1 = sfragfct | (1);
+    const uint sfragfct0 = seedapproachstruct? sfragfct: (sfragfct & (~1));
+    const uint sfragfct1 = seedapproachstruct? sfragfct: (sfragfct | (1));
     const uint qryndx = blockIdx.z;//query serial number
-    fragndx = (sfragfct & 1);
+    fragndx = seedapproachstruct? 0: (sfragfct & 1);
     int qrylen, dbstrlen;//query and reference length
     //distances in positions to the beginnings of the query and reference structures:
     uint qrydst, dbstrdst;
@@ -89,9 +91,9 @@ void CalcLocalSimilarity2_frg2(
         uint mlocf1 = ((qryndx * maxnsteps + sfragfct1) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
         //NOTE: global conv flag distributes across sfragfct;
         //NOTE: do not write at 0: avoid race conditions!
-        if(threadIdx.x == 0 && threadIdx.y == 0 && sfragfct0)
+        if(threadIdx.x == 0 && threadIdx.y == 0 && sfragfct0 && !seedapproachstruct)
             wrkmemaux[mlocf0 + dbstrndx] = (dpsCache[0][lXdim] | CONVERGED_SCOREDP_bitval);
-        if(threadIdx.x == 0 && threadIdx.y == 1)
+        if(threadIdx.x == 0 && threadIdx.y == 1 && sfragfct1)
             wrkmemaux[mlocf1 + dbstrndx] = (dpsCache[0][lXdim] | CONVERGED_SCOREDP_bitval);
         //NOTE: safe exit for all threads in the block: dpsCache[0][lXdim] won't be overwritten!
         return;
@@ -99,7 +101,7 @@ void CalcLocalSimilarity2_frg2(
 
 
     //NOTE: the kernel distributes the convergence flag when no similarity is to be computed
-    if(thrsimilarityperc <= 0.0f) return;
+    if(thrsimilarityperc <= 0.0f /*&& !seedapproachstruct*/) return;
 
 
     //read query and reference attributes:
@@ -120,7 +122,8 @@ void CalcLocalSimilarity2_frg2(
     //calculate start positions
     GetQryRfnPos_frg2(
         depth,
-        qrypos, rfnpos, qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, fragndx
+        qrypos, rfnpos, qrylen, dbstrlen, sfragfct, qryfragfct, rfnfragfct, fragndx,
+        seedapproachstruct
     );
 
     fraglen = GetNAlnPoss_frg(
@@ -133,13 +136,14 @@ void CalcLocalSimilarity2_frg2(
         uint mlocf1 = ((qryndx * maxnsteps + sfragfct1) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
         //NOTE: global conv flag (checked above already) distributes across sfragfct;
         //NOTE: do not write at 0: avoid race conditions!
-        if(threadIdx.x == 0 && threadIdx.y == 0 && sfragfct0)
+        if(threadIdx.x == 0 && threadIdx.y == 0 && sfragfct0 && !seedapproachstruct)
             wrkmemaux[mlocf0 + dbstrndx] = CONVERGED_SCOREDP_bitval;
-        if(threadIdx.x == 0 && threadIdx.y == 1)
+        if(threadIdx.x == 0 && threadIdx.y == 1 && sfragfct1)
             wrkmemaux[mlocf1 + dbstrndx] = CONVERGED_SCOREDP_bitval;
         return;
     }
 
+    //NOTE: use the initial fragment size irrespective of seedapproachstruct!
     fraglen = GetNAlnPoss_frg(
         qrylen, dbstrlen, 0/*qrypos,unused*/, 0/*rfnpos,unused*/,
         qryfragfct/*unused*/, rfnfragfct/*unused*/,
@@ -181,6 +185,8 @@ void CalcLocalSimilarity2_frg2(
             rpos = ALIGN_UP(rpos, 4/*sizeof(int)*/);
             uint nval = *(const uint*)(dpscoremtx + rpos);//READ 4 bytes
             uint oval = dpsCache[threadIdx.y][threadIdx.x];
+            //NOTE: each byte's two least significant bits are reserved for backtracking!
+            nval = nval & 0xfcfcfcfc;
             dpsCache[threadIdx.y][threadIdx.x] = __vmaxu4(nval, oval);//get per-byte max
         }
     }
@@ -221,7 +227,7 @@ void CalcLocalSimilarity2_frg2(
             uint mlocf1 = ((qryndx * maxnsteps + sfragfct1) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
             //NOTE: do not write at 0: avoid race conditions!
             if(sfragfct0) wrkmemaux[mlocf0 + dbstrndx] = convflag0;
-            wrkmemaux[mlocf1 + dbstrndx] = convflag1;
+            if(!seedapproachstruct) wrkmemaux[mlocf1 + dbstrndx] = convflag1;
         }
     }
 }

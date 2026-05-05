@@ -77,21 +77,19 @@ void FragmentBasedAlignmentRefinement(
     int sfragpos, fraglen;
 
 
-//     //NOTE: no convergence check as this refinement executes once in the beginning
-//     if(threadIdx.x == 0) {
-//         uint mloc = ((qryndx * maxnsteps + 0/*sfragfctxndx*/) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
-//         ccmCache[6] = wrkmemaux[mloc + dbstrndx];
-//     }
-// 
-//     __syncthreads();
-// 
-//     if(ccmCache[6])
-//         //DP or finding rotation matrix converged already; 
-//         //(NOTE:any type of convergence applies);
-//         //all threads in the block exit;
-//         return;
-// 
-//     //NOTE: no sync as long ccmCache cell for convergence is not overwritten;
+    if(threadIdx.x == 0) {
+        uint mloc0 = ((qryndx * maxnsteps + 0) * nTAuxWorkingMemoryVars + tawmvConverged) * ndbCstrs;
+        ccmCache[6] = wrkmemaux[mloc0 + dbstrndx];
+    }
+
+    __syncthreads();
+
+    if(((int)(ccmCache[6])) & (CONVERGED_LOWTMSC_bitval))
+        //(NOTE:convergence CONVERGED_LOWTMSC_bitval applies globally);
+        //all threads in the block exit;
+        return;
+
+    //NOTE: no sync as long ccmCache cell for convergence is not overwritten;
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache

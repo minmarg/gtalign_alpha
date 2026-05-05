@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -199,14 +199,14 @@ __global__ void ReformatStructureDataPartStore(
         FPTYPE coord0 = GetDbStrField<FPTYPE,pmv2DCoords+0>(dbstrdst + pos);
         FPTYPE coord1 = GetDbStrField<FPTYPE,pmv2DCoords+1>(dbstrdst + pos);
         FPTYPE coord2 = GetDbStrField<FPTYPE,pmv2DCoords+2>(dbstrdst + pos);
-        LNTYPE icho = GetDbStrField<LNTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst + pos);
+        INTYPE icho = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst + pos);
         INTYPE rnum = GetDbStrField<INTYPE,pmv2DResNumber>(dbstrdst + pos);
         CHTYPE rsd = GetDbStrField<CHTYPE,pmv2Drsd>(dbstrdst + pos);
         CHTYPE ssa = GetDbStrField<CHTYPE,pmv2Dss>(dbstrdst + pos);
         ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+0) * maxndbCposs))[newaddr + pos] = coord0;
         ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+1) * maxndbCposs))[newaddr + pos] = coord1;
         ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+2) * maxndbCposs))[newaddr + pos] = coord2;
-        ((LNTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[newaddr + pos] = icho;
+        ((INTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[newaddr + pos] = icho;
         ((INTYPE*)(tmpdpdiagbuffers + pmv2DResNumber * maxndbCposs))[newaddr + pos] = rnum;
         ((INTYPE*)(tmpdpdiagbuffers + pmv2Drsd * maxndbCposs))[newaddr + pos] = rsd;//NOTE INTYPE
         ((INTYPE*)(tmpdpdiagbuffers + pmv2Dss * maxndbCposs))[newaddr + pos] = ssa;//NOTE INTYPE
@@ -321,14 +321,14 @@ __global__ void ReformatStructureDataPartLoad(
         FPTYPE coord0 = ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+0) * maxndbCposs))[dbstrdst + pos];
         FPTYPE coord1 = ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+1) * maxndbCposs))[dbstrdst + pos];
         FPTYPE coord2 = ((FPTYPE*)(tmpdpdiagbuffers + (pmv2DCoords+2) * maxndbCposs))[dbstrdst + pos];
-        LNTYPE icho = ((LNTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[dbstrdst + pos];
+        INTYPE icho = ((INTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[dbstrdst + pos];
         INTYPE rnum = ((INTYPE*)(tmpdpdiagbuffers + pmv2DResNumber * maxndbCposs))[dbstrdst + pos];
         CHTYPE rsd = ((INTYPE*)(tmpdpdiagbuffers + pmv2Drsd * maxndbCposs))[dbstrdst + pos];//NOTE INTYPE
         CHTYPE ssa = ((INTYPE*)(tmpdpdiagbuffers + pmv2Dss * maxndbCposs))[dbstrdst + pos];//NOTE INTYPE
         SetDbStrField<FPTYPE,pmv2DCoords+0>(dbstrdst + pos, coord0);
         SetDbStrField<FPTYPE,pmv2DCoords+1>(dbstrdst + pos, coord1);
         SetDbStrField<FPTYPE,pmv2DCoords+2>(dbstrdst + pos, coord2);
-        SetDbStrField<LNTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst + pos, icho);
+        SetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst + pos, icho);
         SetDbStrField<INTYPE,pmv2DResNumber>(dbstrdst + pos, rnum);
         SetDbStrField<CHTYPE,pmv2Drsd>(dbstrdst + pos, rsd);
         SetDbStrField<CHTYPE,pmv2Dss>(dbstrdst + pos, ssa);
@@ -356,13 +356,22 @@ __global__ void ReformatStructureDataPartLoad(
     {
         const uint offset = (pmv2DTotFlds + pmv2DTotIndexFlds + qryndx) * maxndbCposs;
         const uint f = threadIdx.x;
+        INTYPE dbstrtype;
         if(f < nTAuxWorkingMemoryVars) {
             //NOTE: coalesced read, uncoalesced write:
             uint mloc = ((qryndx * maxnsteps + 0) * nTAuxWorkingMemoryVars + f) * ndbCstrs2;
             uint tloc = offset + nTAuxWorkingMemoryVars * dbstrndx;
             wrkmemaux[mloc + dbstrndx] = tmpdpdiagbuffers[tloc + f];
             //reset convergence flags:
-            if(f == tawmvConverged) wrkmemaux[mloc + dbstrndx] = 0.0f;
+            if(f == tawmvConverged) {
+                if(qryndx == blockIdx.x) {//read once
+                    dbstrtype = ((INTYPE*)(tmpdpdiagbuffers + pmv2D_Ins_Ch_Ord * maxndbCposs))[dbstrdst];
+                    dbstrtype = GetMoleculeType(dbstrtype);
+                }
+                const uint qrydst = GetQueryDst(qryndx);
+                const int qrytype = GetMoleculeType(GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst));
+                wrkmemaux[mloc + dbstrndx] = (qrytype == dbstrtype)? 0.0f: (float)CONVERGED_LOWTMSC_bitval;
+            }
         }
         //only the last block loops until all query sections are processed:
         if(blockIdx.x + 1 < gridDim.x) break;

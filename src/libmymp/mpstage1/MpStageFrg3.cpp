@@ -62,6 +62,8 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
 
     MYMSG("MpStageFrg3::ScoreBasedOnFragmatching3Kernel", 4);
     // static const std::string preamb = "MpStageFrg3::ExtensiveFrgSwift: ";
+    static const int seedapproachstruct = CLOptions::GetC_SeedRuleValue();
+    static const int windowsize = CLOptions::GetC_WINDOW();
     static const int depth = CLOptions::GetC_DEPTH();
     static const int nthreads = CLOptions::GetCPU_THREADS();
     constexpr int memalignment = CuMemoryBase::GetMinMemAlignment();
@@ -127,6 +129,7 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
 
     int convflags[nFRGS];
     unsigned char dpsc[DPSCDIMX];//dp score cache
+    int poss[s3mTotal][COVDIMX];//query-reference match positions
     float ccm[nEFFDS][COVDIMX];//cross-covarinace matrix and related
     float tfm[nEFFDS];//nEFFDS>nTTranformMatrix
     float stack[SZSTCK];//stack for recursion
@@ -141,7 +144,7 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
     //NOTE: constants, members, and pointers are shared by definition;
     #pragma omp parallel num_threads(nthreads) default(shared) \
         shared(stacksize) \
-        private(convflags, dpsc, ccm,tfm, stack,coords,ssas, scoN,ndxN)
+        private(convflags, dpsc, poss,ccm,tfm, stack,coords,ssas, scoN,ndxN)
     {
         //initialize best scores and flags
         #pragma omp for collapse(3) schedule(dynamic, chunksizeinit)
@@ -187,6 +190,10 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
                         const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                         const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                         const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                        const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+                        // const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                        const int typeqry = GetMoleculeType(typexq); 
+                        const bool prot = true;//(typeqry == gtmtProtein) && (GetMoleculeType(typexr) == gtmtProtein);
                         int qrystep, rfnstep;
                         GetQryRfnStepsize2(depth, qrylen, dbstrlen, &qrystep, &rfnstep);
 
@@ -208,11 +215,13 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
                         float d02 = GetD02(qrylen, dbstrlen);
 
                         CalcLocalSimilarity2_frg2<nFRGS,DPSCDIMY,DPSCDIMX,memalignment>(
-                            thrsimilarityperc, ndbCposs_, dbxpad_,
+                            thrsimilarityperc, seedapproachstruct, ndbCposs_, dbxpad_,
                             qrydst, dbstrdst,  qrylen, dbstrlen,  qrypos, rfnpos,
                             dpscoremtx, dpsc, convflags);
 
-                        for(int fi = 0; fi < nFRGS; fi++)
+                        const int nfrgs = seedapproachstruct? 1: nFRGS;
+
+                        for(int fi = 0; fi < nfrgs; fi++)
                         {
                             if(convflags[fi]) continue;
 
@@ -220,9 +229,24 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
                                 qrylen, dbstrlen, 0/*qrypos,unused*/, 0/*rfnpos,unused*/,
                                 ysndx/*unused*/, xsndx/*unused*/, fi/*fragndx*/);
 
-                            CalcCCMatrices_Complete<nEFFDS,COVDIMX,memalignment>(
-                                qrydst, dbstrdst, fraglen,  qrypos, rfnpos,
-                                querypmbeg, bdbCpmbeg, ccm);
+                            if(qrylen < qrypos + fraglen || dbstrlen < rfnpos + fraglen) continue;
+
+                            if(seedapproachstruct) {
+                                //NOTE: dynamically adjusted alignment frame size for nucleic acids:
+                                const int locseedapproachstruct = (typeqry == gtmtNA)? SEED_RULE_NA: seedapproachstruct;
+                                const int locfraglen = GetNAlnPoss_frg(
+                                    qrylen, dbstrlen, 0/*qrypos,unused*/, 0/*rfnpos,unused*/,
+                                    ysndx/*unused*/, xsndx/*unused*/, fi/*fragndx*/,
+                                    locseedapproachstruct);
+
+                                CalcCCMatricesLocallyAligned_Complete<nEFFDS,COVDIMX,memalignment>(
+                                    thrsimilarityperc, ndbCposs_, dbxpad_,
+                                    qrydst, dbstrdst,  locfraglen,  qrylen, dbstrlen, qrypos, rfnpos,
+                                    querypmbeg, bdbCpmbeg, dpscoremtx, poss, ccm);
+                            } else
+                                CalcCCMatrices_Complete<nEFFDS,COVDIMX,memalignment>(
+                                    qrydst, dbstrdst, fraglen,  qrypos, rfnpos,
+                                    querypmbeg, bdbCpmbeg, ccm);
 
                             if(ccm[twmvNalnposs][0] < 1.0f) continue;
 
@@ -235,13 +259,13 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
 
                             for(int n = 0; n < napiterations; n++)
                             {
-                                bool secstrmatchaln = (n+1 < napiterations);
+                                bool secstrmatchaln = (n+1 < napiterations) && prot;
                                 // bool completealn = true;//(napiterations <= n+1);
                                 bool reversetfms = !scoreachiteration && (n+1 < napiterations);
                                 bool writeqrypss = !reversetfms;//write query positions
 
                                 ProduceAlignmentUsingDynamicIndex2<SCORDIMX,PMBSdatalignment>(
-                                    secstrmatchaln, stack, stacksize,  qrydst, dbstrdst,
+                                    secstrmatchaln, stack, stacksize, windowsize,  qrydst, dbstrdst,
                                     qrylen, dbstrlen, qrypos, rfnpos, fraglen, writeqrypss,
                                     querypmbeg, bdbCpmbeg, queryndxpmbeg, bdbCndxpmbeg,
                                     tfm, coords, ssas);

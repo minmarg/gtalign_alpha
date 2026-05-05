@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021-2023 Mindaugas Margelevicius                       *
+ *   Copyright (C) 2021-2026 Mindaugas Margelevicius                       *
  *   Institute of Biotechnology, Vilnius University                        *
  ***************************************************************************/
 
@@ -35,8 +35,8 @@ enum PMBatchStrDataCnsts {
 };
 
 enum PMBatchStrDataMolType {
-    PMBSMTProtein = 0,//Protein
-    PMBSMTRNA = 1//RNA
+    PMBSMTProtein = -1,//Protein
+    PMBSMTNA = 0//NA
 };
 
 // -------------------------------------------------------------------------
@@ -170,12 +170,12 @@ public:
     //{{these methods are for filling by residue one structure at a time
     bool AddOneResidue(
         int maxstrlen,
-        CHTYPE rsdcode, INTYPE resnum, char inscode, char chain, char chord, 
+        CHTYPE rsdcode, INTYPE resnum, int restype, char inscode, char chain, char chord, 
         FPTYPE coords[pmv2DNoElems]);
 
     TPMBSDFinRetCode FinalizeCrntStructure(//finalize the structure being compiled
         size_t filendx, int strndx,
-        int moltype, const std::string& description, 
+        int globndx, int moltype, const std::string& description, 
         const std::string& strchain, const std::string& strmodel, 
         bool usechaininfo, bool usemodelinfo,
         const int queryblocks,
@@ -183,7 +183,7 @@ public:
         char* const * const * const querypmends);
     //}}
 
-    bool FieldTypeValid() const;//is field Type valid across all structures written?
+    bool FieldTypeValid() const;//whether the field Type is valid across structures
 
     size_t GetFileNdxAt(int ndx) const {return tmpclustfilendxs_[ndx];}
     int GetStructNdxAt(int ndx) const {return tmpcluststrndxs_[ndx];}
@@ -367,7 +367,7 @@ size_t PMBatchStrData::GetPMDataSizeUB(size_t totallen)
 inline
 bool PMBatchStrData::AddOneResidue(
     int maxstrlen,
-    CHTYPE rsdcode, INTYPE resnum, char inscode, char chain, char chord, 
+    CHTYPE rsdcode, INTYPE resnum, int restype, char inscode, char chain, char chord,
     FPTYPE coords[pmv2DNoElems])
 {
     //NOTE: structure-specific fields pps2DLen, pps2DType, and pps2DDist 
@@ -394,9 +394,10 @@ bool PMBatchStrData::AddOneResidue(
         bdbCpmendovhd_[f] += TPM2DVectorFieldSize::szvfs_[f];
     }
 
-    *(LNTYPE*)(bdbCpmendovhd_[pmv2D_Ins_Ch_Ord]) = 
-        (LNTYPE)PM2D_MAKEINT_Ins_Ch_Ord(
+    *(INTYPE*)(bdbCpmendovhd_[pmv2D_Ins_Ch_Ord]) = 
+        (INTYPE)PM2D_MAKEINT_Ins_Ch_Ord(
             (unsigned int)inscode, (unsigned int)chain, (unsigned int)chord);
+    WatermarkOnType(GetMoleculeType(restype), *(INTYPE*)(bdbCpmendovhd_[pmv2D_Ins_Ch_Ord]));
     bdbCpmendovhd_[pmv2D_Ins_Ch_Ord] += TPM2DVectorFieldSize::szvfs_[pmv2D_Ins_Ch_Ord];
 
     *(INTYPE*)(bdbCpmendovhd_[pmv2DResNumber]) = resnum;
@@ -426,7 +427,7 @@ inline
 PMBatchStrData::TPMBSDFinRetCode 
 PMBatchStrData::FinalizeCrntStructure(
     size_t filendx, int strndx,
-    int moltype, const std::string& description, 
+    int globndx, int moltype, const std::string& description, 
     const std::string& strchain, const std::string& strmodel, 
     bool usechaininfo, bool usemodelinfo,
     const int /* queryblocks */,
@@ -441,7 +442,7 @@ PMBatchStrData::FinalizeCrntStructure(
     size_t npositswrt = GetNoPositsWritten();//#positions written
     size_t szstruct = PMBatchStrData::GetPMDataSize1(nposits);//size of data to be written
     size_t szstructswrt = GetPMDataSize();//size of data written
-    INTYPE nstructswrt = GetNoStructsWritten();//number of structures written
+    size_t nstructswrt = GetNoStructsWritten();//number of structures written
     static constexpr size_t szalign = PMBSdatalignment * pmv2DTotFlds;//max size for data alignment
 
     if(nposits < 1) {
@@ -453,7 +454,7 @@ PMBatchStrData::FinalizeCrntStructure(
         return pmbsdfShort;
     }
 
-    if(maxdatasize_ < szstruct+szalign || 
+    if(maxdatasize_ < szstruct + szalign || 
        maxdatalen_ < nposits)//allocation too small
     {
         //fallback, abandon the structure
@@ -487,15 +488,17 @@ PMBatchStrData::FinalizeCrntStructure(
 
     //fill in structure-specific fields; use pps2DType as a type and ID simultaneously;
     *(INTYPE*)(bdbCpmendovhd_[pps2DLen]) = (INTYPE)nposits;
-    *(INTYPE*)(bdbCpmendovhd_[pps2DType]) = (INTYPE)(moltype);
+    *(INTYPE*)(bdbCpmendovhd_[pps2DType]) = (INTYPE)(globndx);
     *(LNTYPE*)(bdbCpmendovhd_[pps2DDist]) = (LNTYPE)npositswrt;
+    //update the sign bit at the first structure position to indicate molecular type
+    WatermarkOnType(GetMoleculeType(moltype), *(INTYPE*)(bdbCpmend_[pmv2D_Ins_Ch_Ord]));
 
     tmpclustfilendxs_.push_back(filendx);
     tmpcluststrndxs_.push_back(strndx);
 
     if(maxdatasize_ < szstructswrt + szstruct + szalign || 
        maxdatalen_ < npositswrt + nposits || 
-       maxnstrs_ < (size_t)nstructswrt + 1)
+       maxnstrs_ < nstructswrt + 1)
     {
         //this structure cannot be contained currently, leave it for the next round;
         //structure will be the 1st, distance = 0
@@ -541,7 +544,7 @@ std::string PMBatchStrData::FormatDescription(
 
 // -------------------------------------------------------------------------
 // FieldTypeValid: verify whether the Type field is valid across all 
-// written structures
+// written structures;
 // 
 inline
 bool PMBatchStrData::FieldTypeValid() const
@@ -574,7 +577,7 @@ PMBatchStrData::CopyOvhdTo(PMBatchStrData& bsd) const
     size_t npositswrtbsd = bsd.GetNoPositsWritten();//#positions written
     size_t szstruct = PMBatchStrData::GetPMDataSize1(nposits);//size of data to be written
     size_t szstructswrtbsd = PMBatchStrData::GetPMDataSize1(npositswrtbsd);//size of data written
-    INTYPE nstructswrtbsd = bsd.GetNoStructsWritten();//number of structures written
+    size_t nstructswrtbsd = bsd.GetNoStructsWritten();//number of structures written
     static constexpr size_t szalign = PMBSdatalignment * pmv2DTotFlds;//max size for data alignment
 
     if(bsd.maxdatasize_ < szstruct+szalign || 
@@ -586,7 +589,7 @@ PMBatchStrData::CopyOvhdTo(PMBatchStrData& bsd) const
 
     if(bsd.maxdatasize_ < szstructswrtbsd + szstruct + szalign || 
        bsd.maxdatalen_ < npositswrtbsd + nposits || 
-       bsd.maxnstrs_ < (size_t)nstructswrtbsd + 1)
+       bsd.maxnstrs_ < nstructswrtbsd + 1)
     {
         //NOTE: should not happen!
         return pmbsdfLimits;
@@ -613,12 +616,12 @@ PMBatchStrData::CopyOvhdTo(PMBatchStrData& bsd) const
     //copy description
     char* const * ptrdescs = bdbCptrdescs_.get();//assume valid pointers
     char** bsdptrdescs = bsd.bdbCptrdescs_.get();
-    INTYPE nstructswrt = GetNoStructsWritten();//number of structures written
+    size_t nstructswrt = GetNoStructsWritten();//number of structures written
     strcpy(bsdptrdescs[nstructswrtbsd], ptrdescs[nstructswrt]);
     //}}
 
     if(tmpclustfilendxs_.size() != tmpcluststrndxs_.size() ||
-       tmpclustfilendxs_.size() != GetNoStructsWritten() + 1)
+       tmpclustfilendxs_.size() != nstructswrt + 1)
         throw MYRUNTIME_ERROR2( 
         preamb + "Inconsistent file index size.", CRITICAL);
 
