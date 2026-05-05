@@ -315,7 +315,7 @@ https://doi.org/10.1038/s41467-024-51669-z
 ## Contacts
 
 Bug reports, comments, suggestions are welcome.
-If you have other questions, please contact Mindaugas Margelevicius at
+For questions, please contact Mindaugas Margelevicius at
 [mindaugas.margelevicius@bti.vu.lt](mailto:mindaugas.margelevicius@bti.vu.lt).
 
 ## License
