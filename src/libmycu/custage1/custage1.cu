@@ -1896,6 +1896,7 @@ void stage1::stage1_dprefine(
 //     static const float gcosts[ncosts] = {-0.6f, 0.0f};
     enum{ncosts = 1};
     static const float gcosts[ncosts] = {GAP0? 0.0f: -0.6f};
+    static const float prefactor = CLOptions::GetP_PRE_FACTOR();
 
     constexpr bool COMPLETEAPPROACH = false;//complete DP approach
     constexpr bool vANCHORRGN = false;//using anchor region
@@ -1983,7 +1984,7 @@ void stage1::stage1_dprefine(
 
             if(PRESCREEN && maxndpiters <= dpi+1 && 0.0f < prescorethr)
                 SetLowScoreConvergenceFlag<<<nblcks_scinit0,nthrds_scinit0,0,streamproc>>>(
-                    prescorethr, ndbCstrs, maxnsteps, wrkmemaux);
+                    prescorethr, prefactor, ndbCstrs, maxnsteps, wrkmemaux);
             MYCUDACHECKLAST;
         }
     }

@@ -93,10 +93,12 @@ void FragmentBasedAlignmentRefinement(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        GetQueryLenDst(qryndx, (int*)ccmCache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x < 2) GetQueryLenDst(qryndx, (int*)ccmCache + 2);
 
     if(threadIdx.x == tawmvQRYpos + 8 || threadIdx.x == tawmvRFNpos + 8) {
         //NOTE: reuse ccmCache to read positions;
@@ -112,6 +114,7 @@ void FragmentBasedAlignmentRefinement(
     qrylen = ((int*)ccmCache)[2]; qrydst = ((int*)ccmCache)[3];
     qrypos = ccmCache[tawmvQRYpos+8]; rfnpos = ccmCache[tawmvRFNpos+8];
     sfragpos = sfragfct * sfragstep;
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -129,7 +132,7 @@ void FragmentBasedAlignmentRefinement(
 
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0(qrylen, dbstrlen);
+    const float d0 = GetD0(qrylen, dbstrlen, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylen, dbstrlen);
     float dst32 = CP_LARGEDST;

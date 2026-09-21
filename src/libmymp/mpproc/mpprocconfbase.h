@@ -44,7 +44,7 @@
 // MAX number of best-scoring TFM configurations selected from top N DP scores for 
 // further refinement 
 // (obviously, CUS1_TBSP_DPSCORE_TOP_N_REFINEMENT<=CUS1_TBSP_DPSCORE_TOP_N)
-#define CUS1_TBSP_DPSCORE_TOP_N_REFINEMENT 16
+#define CUS1_TBSP_DPSCORE_TOP_N_REFINEMENT 32
 // total MAX number of confihurations to verify alternatively
 #define CUS1_TBSP_DPSCORE_TOP_N_REFINEMENTxMAX_CONFIGS \
     ((CUS1_TBSP_DPSCORE_TOP_N_MAX_CONFIGS) * (CUS1_TBSP_DPSCORE_TOP_N_REFINEMENT))

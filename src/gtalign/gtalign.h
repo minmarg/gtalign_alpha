@@ -6,7 +6,7 @@
 #ifndef __gtalign_h__
 #define __gtalign_h__
 
-static const char*  version = "1.0.1";
+static const char*  version = "1.1.0";
 static const char*  verdate = "";
 
 static const char*  instructs = "\n\
@@ -147,6 +147,8 @@ Similarity pre-screening options:\n\
                             0, all pairs are subject to further processing.\n\
                             RECOMMENDED: 0.3-0.4 for proteins; 0.2 for RNAs.\n\
                         Default=0.4\n\
+--pre-factor=<factor>       Nucleic acid --pre-score scaling factor [0.5-1].\n\
+                        Default=0.7\n\
 \n\
 Per-pair computation options:\n\
 --symmetric                 Always produce symmetric alignments for the same\n\
@@ -155,6 +157,7 @@ Per-pair computation options:\n\
                             Difference between 3 and 1 in TM-score is ~0.001.\n\
                         Default=1\n\
 --depth=<code>              Superposition search depth:\n\
+                            a: benthic; b: sub; c: abyss;\n\
                             0: deep; 1: high; 2: medium; 3: shallow.\n\
                         Default=2\n\
 --gapcost=<penalty_code>    Gap cost used to estimate local similarity for\n\
@@ -174,7 +177,7 @@ Per-pair computation options:\n\
 --window=<size>             Initial window size (in residues) used to analyze\n\
                             superposition candidates {256,512}.\n\
                         Default=256\n\
---nbranches=<number>        Number [3,16] of independent top-performing\n\
+--nbranches=<number>        Number [3,32] of independent top-performing\n\
                             branches identified during superposition search to\n\
                             explore in more detail.\n\
                         Default=5\n\
@@ -190,6 +193,9 @@ Per-pair computation options:\n\
                             expense of optimality (larger values => faster;\n\
                             NOTE: the pre-screening options are not affected;\n\
                             NOTE: settings override specified options):\n\
+                             a: --depth=a --trigger=0 --nbranches=32 --add-search-by-ss\n\
+                             b: --depth=b --trigger=0 --nbranches=32 --add-search-by-ss\n\
+                             c: --depth=c --trigger=0 --nbranches=32 --add-search-by-ss\n\
                              0: --depth=0 --trigger=0 --nbranches=16 --add-search-by-ss\n\
                              1: --depth=0 --trigger=0\n\
                              2: --depth=0 --trigger=20\n\
@@ -240,8 +246,8 @@ HPC options:\n\
                             NOTE: Large values greatly reduce #structure pairs\n\
                             processed in parallel.\n\
                         Default=4000\n\
---dev-min-length=<length>   Minimum length [3,32767] for reference structures.\n\
-                            References shorter than this specified value will\n\
+--dev-min-length=<length>   Minimum length [3,32767] for structures.\n\
+                            Structures shorter than this specified value will\n\
                             be skipped.\n\
                         Default=20\n\
 --no-file-sort              Do not sort files by size. Data locality can be\n\

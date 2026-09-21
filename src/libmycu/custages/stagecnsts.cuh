@@ -123,11 +123,14 @@ float GetD0fin(int qrylen, int dbstrlen, int moltype = gtmtProtein)
 
 
 __DINLINE__
-float GetD0(int qrylen, int dbstrlen)
+float GetD0(int qrylen, int dbstrlen, int moltype = gtmtProtein)
 {
     float lnorm = GetLnorm(qrylen, dbstrlen);
+    if(moltype == gtmtNA) {
+        if(30.f <= lnorm) return 0.6f * sqrtf(lnorm - 0.5f) - 2.5f;
+        return 0.6f;
+    }
     float d0 = 0.168f;
-
     if(lnorm > 19.f)
         //d0 = 1.24f * powf(lnorm - 15.f, 1.f/3.f) - 1.8f;
         d0 = 1.24f * cbrtf(lnorm - 15.f) - 1.8f;
@@ -137,18 +140,18 @@ float GetD0(int qrylen, int dbstrlen)
 
 // GetD02: calculate d0 squared
 __DINLINE__
-float GetD02(int qrylen, int dbstrlen)
+float GetD02(int qrylen, int dbstrlen, int moltype = gtmtProtein)
 {
-    float d0 = GetD0(qrylen, dbstrlen);
+    float d0 = GetD0(qrylen, dbstrlen, moltype);
     return SQRD(d0);
 }
 
 // GetD02_dpscan: calculate d0 squared tuned for the scan by DP
 //
 __DINLINE__
-float GetD02_dpscan(int qrylen, int dbstrlen)
+float GetD02_dpscan(int qrylen, int dbstrlen, int moltype = gtmtProtein)
 {
-    float d0 = GetD0(qrylen, dbstrlen) + 1.5f;
+    float d0 = GetD0(qrylen, dbstrlen, moltype) + 1.5f;
     return SQRD(d0);
 }
 

@@ -156,7 +156,7 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase1Kernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -395,7 +395,7 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase2Kernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -635,7 +635,7 @@ void MpStageFin::FinalFragmentBasedDPAlignmentRefinementPhase2_fullsearchKernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;

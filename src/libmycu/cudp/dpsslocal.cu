@@ -270,6 +270,7 @@ void ExecDPSSLocal3264x(
 
         //NOTE: match score:
         val1 = (float)((qrySS == rfnSS[threadIdx.x+i]) * 2) - 1.0f;
+        if(qrySS == pmnasUNPAIRED || rfnSS[threadIdx.x+i] == pmnasUNPAIRED) val1 *= 0.4f;
 
         //MM state update (diagonal direction)
         val1 += pdiag2[GetBufferNdx<DDIM>(dpdsssStateMM,threadIdx.x+1)];

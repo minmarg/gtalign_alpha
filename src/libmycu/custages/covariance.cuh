@@ -497,7 +497,16 @@ void GetQryRfnPos_frg2(
     const int stepmult = seedapproachstruct? 0: 1;
     int qrystepsz = GetFragStepSize_frg_shallow(qrylen);
     int rfnstepsz = GetFragStepSize_frg_shallow(dbstrlen);
-    if(depth == CLOptions::csdDeep) {
+    if(depth == CLOptions::csdBenthic) {
+        qrystepsz = GetFragStepSize_frg_benthic(qrylen);
+        rfnstepsz = GetFragStepSize_frg_benthic(dbstrlen);
+    } else if(depth == CLOptions::csdSub) {
+        qrystepsz = GetFragStepSize_frg_sub(qrylen);
+        rfnstepsz = GetFragStepSize_frg_sub(dbstrlen);
+    } else if(depth == CLOptions::csdAbyss) {
+        qrystepsz = GetFragStepSize_frg_abyss(qrylen);
+        rfnstepsz = GetFragStepSize_frg_abyss(dbstrlen);
+    } else if(depth == CLOptions::csdDeep) {
         qrystepsz = GetFragStepSize_frg_deep(qrylen);
         rfnstepsz = GetFragStepSize_frg_deep(dbstrlen);
     } else if(depth == CLOptions::csdHigh) {
@@ -534,7 +543,16 @@ void GetQryRfnFct_frg2(
     const int stepmult = seedapproachstruct? 0: 1;
     int qrystepsz = GetFragStepSize_frg_shallow(qrylen);
     int rfnstepsz = GetFragStepSize_frg_shallow(dbstrlen);
-    if(depth == CLOptions::csdDeep) {
+    if(depth == CLOptions::csdBenthic) {
+        qrystepsz = GetFragStepSize_frg_benthic(qrylen);
+        rfnstepsz = GetFragStepSize_frg_benthic(dbstrlen);
+    } else if(depth == CLOptions::csdSub) {
+        qrystepsz = GetFragStepSize_frg_sub(qrylen);
+        rfnstepsz = GetFragStepSize_frg_sub(dbstrlen);
+    } else if(depth == CLOptions::csdAbyss) {
+        qrystepsz = GetFragStepSize_frg_abyss(qrylen);
+        rfnstepsz = GetFragStepSize_frg_abyss(dbstrlen);
+    } else if(depth == CLOptions::csdDeep) {
         qrystepsz = GetFragStepSize_frg_deep(qrylen);
         rfnstepsz = GetFragStepSize_frg_deep(dbstrlen);
     } else if(depth == CLOptions::csdHigh) {

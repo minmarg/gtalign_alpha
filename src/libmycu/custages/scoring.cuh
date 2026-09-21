@@ -23,7 +23,8 @@ __global__ void SetCurrentFragSpecs(
 // SetLowScoreConvergenceFlag: set the appropriate convergence flag for 
 // the pairs for which the score is below the threshold;
 __global__ void SetLowScoreConvergenceFlag(
-    const float scorethld,
+    const float prescore,
+    const float prefactor,
     const uint ndbCstrs,
     const uint maxnsteps,
     float* __restrict__ wrkmemaux

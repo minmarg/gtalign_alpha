@@ -324,6 +324,8 @@ void MpStage1::FindFragKernel(
                     const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     const int abspos = n1 + si * stepinit_;
                     const int qrypos = mymax(0,abspos);
@@ -338,7 +340,7 @@ void MpStage1::FindFragKernel(
                     const float nalnposs = mymin(qrylen-qrypos, dbstrlen-rfnpos);
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0(qrylen, dbstrlen);
+                    const float d0 = GetD0(qrylen, dbstrlen, type);
                     const float d02 = SQRD(d0);
                     float dst32 = CP_LARGEDST;
                     float best = 0.0f;//best score obtained
@@ -469,6 +471,7 @@ void MpStage1::DPRefine(
 {
     enum{ncosts = 1};
     static const float gcosts[ncosts] = {GAP0? 0.0f: -0.6f};
+    static const float prefactor = CLOptions::GetP_PRE_FACTOR();
 
     constexpr bool vANCHORRGN = false;//using anchor region
     constexpr bool vBANDED = false;//banded alignment
@@ -503,7 +506,7 @@ void MpStage1::DPRefine(
             if(dpi+1 < maxndpiters) SaveLastScore0Kernel(wrkmemaux_);
 
             if(PRESCREEN && maxndpiters <= dpi+1 && 0.0f < prescorethr)
-                SetLowScoreConvergenceFlagKernel(prescorethr, querypmbeg_, bdbCpmbeg_, wrkmemaux_);
+                SetLowScoreConvergenceFlagKernel(prescorethr, prefactor, querypmbeg_, bdbCpmbeg_, wrkmemaux_);
         }
 
         //reset the score convergence flag for the steps to follow not to halt
@@ -634,6 +637,8 @@ void MpStage1::RefineFragInitKernel(
                     const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     const int mloc = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars) * ndbCstrs_;
                     const int qrypos = wrkmemaux[mloc + tawmvQRYpos * ndbCstrs_ + ri];
@@ -650,7 +655,7 @@ void MpStage1::RefineFragInitKernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0(qrylen, dbstrlen);
+                    const float d0 = GetD0(qrylen, dbstrlen, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylen, dbstrlen);
                     float dst32 = CP_LARGEDST;
@@ -860,6 +865,8 @@ void MpStage1::RefineFragDPKernel(
                     // const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                     const int dbstrlenorg = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                     const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                    const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                    const int type = GetMoleculeType(typexr);
 
                     enum {qrypos = 0, rfnpos = 0};
                     const int sfragpos = sfragfct * sfragstep;
@@ -878,7 +885,7 @@ void MpStage1::RefineFragDPKernel(
                         continue;
 
                     //threshold calculated for the original lengths
-                    const float d0 = GetD0(qrylenorg, dbstrlenorg);
+                    const float d0 = GetD0(qrylenorg, dbstrlenorg, type);
                     const float d02 = SQRD(d0);
                     const float d82 = GetD82(qrylenorg, dbstrlenorg);
                     float dst32 = CP_LARGEDST;
@@ -1198,12 +1205,13 @@ void MpStage1::SaveLastScore0Kernel(
 // -------------------------------------------------------------------------
 // SetLowScoreConvergenceFlagKernel: set the appropriate convergence flag for 
 // the pairs for which the score is below the threshold;
-// scorethld, score threshold;
+// prescore, pre-score threshold;
 // NOTE: memory pointers should be aligned!
 // wrkmemaux, auxiliary working memory;
 // 
 void MpStage1::SetLowScoreConvergenceFlagKernel(
-    const float scorethld,
+    const float prescore,
+    const float prefactor,
     const char* const * const __RESTRICT__ querypmbeg,
     const char* const * const __RESTRICT__ bdbCpmbeg,
     float* const __RESTRICT__ wrkmemaux)
@@ -1214,6 +1222,7 @@ void MpStage1::SetLowScoreConvergenceFlagKernel(
     static const std::string preamb = "MpStage1::SetLowScoreConvergenceFlagKernel: ";
     static const int nthreads = CLOptions::GetCPU_THREADS();
     constexpr int memalignment = mycemin((size_t)PMBSdatalignment, CuMemoryBase::GetMinMemAlignment());
+    float scorethld = prescore;
 
     //execution configuration for query-reference flags across fragment factors:
     const int nblocks_x = (ndbCstrs_ + XDIM - 1) / XDIM;
@@ -1235,6 +1244,10 @@ void MpStage1::SetLowScoreConvergenceFlagKernel(
                 const int istre = mymin(istr0 + XDIM, (int)ndbCstrs_);
                 const int mloc0 = ((qi * maxnsteps_ + 0) * nTAuxWorkingMemoryVars) * ndbCstrs_;
                 const int qrylen = PMBatchStrData::GetLengthAt(querypmbeg, qi);
+                const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
+                const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
+                const int typeqry = GetMoleculeType(typexq);
+                if(prefactor < 1.0f && typeqry == gtmtNA) scorethld *= prefactor;
                 #pragma omp simd aligned(bdbCpmbeg,wrkmemaux:memalignment)
                 for(int ri = istr0; ri < istre; ri++) {
                     int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);

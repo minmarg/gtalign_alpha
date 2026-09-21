@@ -15,9 +15,26 @@
 // GetFragStepSize_frg_deep: get the the step size which corresponds to 
 // the depth of superposition exploration based on fragments dependent upon 
 // structure lengths; version of more extensive parallelization;
-// NOTE: deep depth;
+// NOTE: benthic zone;
 // length, structure length;
-//
+__HDINLINE__
+int GetFragStepSize_frg_benthic(int /*length*/)
+{
+    return 3;
+}
+// NOTE: subterranean level;
+__HDINLINE__
+int GetFragStepSize_frg_sub(int /*length*/)
+{
+    return 4;
+}
+// NOTE: abyss;
+__HDINLINE__
+int GetFragStepSize_frg_abyss(int /*length*/)
+{
+    return 5;
+}
+// NOTE: deep depth;
 __HDINLINE__
 int GetFragStepSize_frg_deep(int length)
 {
@@ -70,7 +87,16 @@ void GetQryRfnStepsize2(
 {
     *qrystepsz = GetFragStepSize_frg_shallow(qrylen);
     *rfnstepsz = GetFragStepSize_frg_shallow(dbstrlen);
-    if(depth == CLOptions::csdDeep) {
+    if(depth == CLOptions::csdBenthic) {
+        *qrystepsz = GetFragStepSize_frg_benthic(qrylen);
+        *rfnstepsz = GetFragStepSize_frg_benthic(dbstrlen);
+    } else if(depth == CLOptions::csdSub) {
+        *qrystepsz = GetFragStepSize_frg_sub(qrylen);
+        *rfnstepsz = GetFragStepSize_frg_sub(dbstrlen);
+    } else if(depth == CLOptions::csdAbyss) {
+        *qrystepsz = GetFragStepSize_frg_abyss(qrylen);
+        *rfnstepsz = GetFragStepSize_frg_abyss(dbstrlen);
+    } else if(depth == CLOptions::csdDeep) {
         *qrystepsz = GetFragStepSize_frg_deep(qrylen);
         *rfnstepsz = GetFragStepSize_frg_deep(dbstrlen);
     } else if(depth == CLOptions::csdHigh) {

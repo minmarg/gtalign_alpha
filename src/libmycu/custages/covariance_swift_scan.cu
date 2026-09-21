@@ -1045,7 +1045,8 @@ void CalcScoresUnrl_SWFTscanProgressive(
     //reuse ccmCache
     if(threadIdx.x == 0) {
         ((int*)scvCache)[0] = GetDbStrLength(dbstrndx);
-        ((int*)scvCache)[1] = GetDbStrDst(dbstrndx);
+        ((int*)scvCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)scvCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
 
     if(threadIdx.x == xdim - 1) {
@@ -1067,6 +1068,7 @@ void CalcScoresUnrl_SWFTscanProgressive(
     dbstrlenorg = ((int*)scvCache)[0]; dbstrdst = ((int*)scvCache)[1];
     qrylenorg = ((int*)scvCache)[2]; //qrydst = ((int*)scvCache)[3];
     qrylen = dbstrlen = scvCache[tawmvNAlnPoss+32];
+    const int type = GetMoleculeType(((int*)scvCache)[4]);
 
     __syncthreads();
 
@@ -1096,7 +1098,7 @@ void CalcScoresUnrl_SWFTscanProgressive(
 
 
     //threshold calculated for the original lengths
-    float d02 = GetD02(qrylenorg, dbstrlenorg);
+    float d02 = GetD02(qrylenorg, dbstrlenorg, type);
 
     //read transformation matrix for query-reference pair
     if(threadIdx.x < nTTranformMatrix) {

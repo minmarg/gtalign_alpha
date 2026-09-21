@@ -156,7 +156,8 @@ protected:
         float* const __RESTRICT__ wrkmemaux);
 
     void SetLowScoreConvergenceFlagKernel(
-        const float scorethld,
+        const float prescore,
+        const float prefactor,
         const char* const * const __RESTRICT__ querypmbeg,
         const char* const * const __RESTRICT__ bdbCpmbeg,
         float* const __RESTRICT__ wrkmemaux);

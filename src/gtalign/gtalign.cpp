@@ -112,6 +112,7 @@ int main( int argc, char *argv[] )
     //
     std::string     preseqsim;//sequence similarity threshold score for pre-screening
     std::string     prescore;//threshold provisional score for pre-screening
+    std::string     prefactor;//scaling factor for prescore
     //
     std::string     initalnfile;//file of initial alignment
     std::string     permalnfile;//file of permanent alignment
@@ -232,7 +233,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         gtaOpt_infmt, gtaOpt_aatom, gtaOpt_natom, gtaOpt_hetatm, gtaOpt_mol,
         gtaOpt_ter, gtaOpt_split, gtaOpt_superp,
         //
-        gtaOpt_pre_similarity, gtaOpt_pre_score,
+        gtaOpt_pre_similarity, gtaOpt_pre_score, gtaOpt_pre_factor,
         //
         gtaOpt_i, gtaOpt_I, gtaOpt_d0, gtaOpt_u, gtaOpt_a,
         gtaOpt_symmetric, gtaOpt_refinement,
@@ -289,6 +290,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         //
         {"pre-similarity", my_required_argument, gtaOpt_pre_similarity},
         {"pre-score", my_required_argument, gtaOpt_pre_score},
+        {"pre-factor", my_required_argument, gtaOpt_pre_factor},
         //
         {"i", my_required_argument, gtaOpt_i},
         {"I", my_required_argument, gtaOpt_I},
@@ -381,6 +383,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
                     //
                     case gtaOpt_pre_similarity:  preseqsim = myoptarg; break;
                     case gtaOpt_pre_score:  prescore = myoptarg; break;
+                    case gtaOpt_pre_factor: prefactor = myoptarg; break;
                     //
                     case gtaOpt_i:      initalnfile = myoptarg; break;
                     case gtaOpt_I:      permalnfile = myoptarg; break;
@@ -743,6 +746,12 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
             CLOPTASSIGN(P_PRE_SCORE, f);
         }
 
+        if( !prefactor.empty()) {
+            if( mystring2float(f, prescore, "Invalid argument of option --pre-factor."))
+                return EXIT_FAILURE;
+            CLOPTASSIGN(P_PRE_FACTOR, f);
+        }
+
 
         if( !initalnfile.empty() && !permalnfile.empty()) {
             error("One of the options -i and -I can only be specified.");
@@ -780,8 +789,14 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         }
 
         if( !depth.empty()) {
-            if( mystring2int(c, depth, "Invalid argument of option --depth."))
-                return EXIT_FAILURE;
+            if(depth == "a") c = CLOptions::csdBenthic;
+            else if(depth == "b") c = CLOptions::csdSub;
+            else if(depth == "c") c = CLOptions::csdAbyss;
+            else {
+                if( mystring2int(c, depth, "Invalid argument of option --depth."))
+                    return EXIT_FAILURE;
+                c += (int)(CLOptions::csdDeep);
+            }
             CLOPTASSIGN(C_DEPTH, c);
         }
 
@@ -832,7 +847,10 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         CLOPTASSIGN(C_NODETAILEDSEARCH, nodetailedsearch);
 
         if( !speed.empty()) {
-            if( mystring2int(c, speed, "Invalid argument of option --speed."))
+            if(speed == "a") c = -3;
+            else if(speed == "b") c = -2;
+            else if(speed == "c") c = -1;
+            else if(mystring2int(c, speed, "Invalid argument of option --speed."))
                 return EXIT_FAILURE;
             CLOPTASSIGN(C_SPEED, c);
             const int coarseref = CLOptions::csrCoarseSearch;
@@ -843,19 +861,22 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
             int valconvergence = CLOptions::GetC_CONVERGENCE();
             // nodetailedsearch = 0;
             switch(c) {
-                case  0: valdepth = 0; valtrigger = 0; valnbranches = 16; addsearchbyss = 1; break;
-                case  1: valdepth = 0; valtrigger = 0; break;
-                case  2: valdepth = 0; valtrigger = 20; break;
-                case  3: valdepth = 0; valtrigger = 50; break;
-                case  4: valdepth = 1; valtrigger = 0; break;
-                case  5: valdepth = 1; valtrigger = 20; break;
-                case  6: valdepth = 1; valtrigger = 50; break;
-                case  7: valdepth = 2; valtrigger = 0; break;
-                case  8: valdepth = 2; valtrigger = 20; break;
-                case  9: valdepth = 2; valtrigger = 50; break;
-                case 10: valdepth = 3; valtrigger = 0; valrefinement = coarseref; valconvergence = 2; break;
-                case 11: valdepth = 3; valtrigger = 20; valrefinement = coarseref; valconvergence = 2; break;
-                case 12: valdepth = 3; valtrigger = 50; valrefinement = coarseref; valconvergence = 2; break;
+                case -3: valdepth = CLOptions::csdBenthic; valtrigger = 0; valnbranches = 32; addsearchbyss = 1; break;
+                case -2: valdepth = CLOptions::csdSub; valtrigger = 0; valnbranches = 32; addsearchbyss = 1; break;
+                case -1: valdepth = CLOptions::csdAbyss; valtrigger = 0; valnbranches = 32; addsearchbyss = 1; break;
+                case  0: valdepth = CLOptions::csdDeep; valtrigger = 0; valnbranches = 16; addsearchbyss = 1; break;
+                case  1: valdepth = CLOptions::csdDeep; valtrigger = 0; break;
+                case  2: valdepth = CLOptions::csdDeep; valtrigger = 20; break;
+                case  3: valdepth = CLOptions::csdDeep; valtrigger = 50; break;
+                case  4: valdepth = CLOptions::csdHigh; valtrigger = 0; break;
+                case  5: valdepth = CLOptions::csdHigh; valtrigger = 20; break;
+                case  6: valdepth = CLOptions::csdHigh; valtrigger = 50; break;
+                case  7: valdepth = CLOptions::csdMedium; valtrigger = 0; break;
+                case  8: valdepth = CLOptions::csdMedium; valtrigger = 20; break;
+                case  9: valdepth = CLOptions::csdMedium; valtrigger = 50; break;
+                case 10: valdepth = CLOptions::csdShallow; valtrigger = 0; valrefinement = coarseref; valconvergence = 2; break;
+                case 11: valdepth = CLOptions::csdShallow; valtrigger = 20; valrefinement = coarseref; valconvergence = 2; break;
+                case 12: valdepth = CLOptions::csdShallow; valtrigger = 50; valrefinement = coarseref; valconvergence = 2; break;
                 case 13: nodetailedsearch = 1; valrefinement = coarseref; valconvergence = 2; break;
             };
             CLOPTASSIGN(C_REFINEMENT, valrefinement);

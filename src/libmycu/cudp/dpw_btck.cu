@@ -164,10 +164,12 @@ void ExecDPwBtck3264x(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)tfmCache);
-        GetQueryLenDst(qryndx, (int*)tfmCache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)tfmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)tfmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)tfmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x < 2) GetQueryLenDst(qryndx, (int*)tfmCache + 2);
 
 #if (CUDP_2DCACHE_DIM_D <= 32)
     __syncwarp();
@@ -178,6 +180,7 @@ void ExecDPwBtck3264x(
     //NOTE: no bank conflict when two threads from the same warp access the same address;
     dbstrlen = ((int*)tfmCache)[0]; dbstrdst = ((int*)tfmCache)[1];
     qrylen = ((int*)tfmCache)[2]; qrydst = ((int*)tfmCache)[3];
+    const int type = GetMoleculeType(((int*)tfmCache)[4]);
 
 #if (CUDP_2DCACHE_DIM_D <= 32)
     __syncwarp();
@@ -403,8 +406,8 @@ void ExecDPwBtck3264x(
     float *pdiag1 = diag1Cache;
     float *pdiag2 = diag2Cache;
     float d02;
-    if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen);
-    else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen);
+    if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen, type);
+    else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen, type);
 
     //start calculations for this position with 32x/64x unrolling
     //NOTE: sync inside: do not branch;

@@ -60,6 +60,7 @@ CLDEFINEASSIGNMENT( I_SPLIT, int, issaNoSplit, value>=0 && value<issanIStructSpl
 CLDEFINEASSIGNMENT( I_SUPERP, int, 0, value>=0 && value<iaanIAlnAlgorithm, --superp);
 CLDEFINEASSIGNMENT( P_PRE_SIMILARITY, float, 0.0f, value>=0.0f, --pre-pre-similarity);
 CLDEFINEASSIGNMENT( P_PRE_SCORE, float, 0.4f, value>=0.0f && value<1.0f, --pre-score);
+CLDEFINEASSIGNMENT( P_PRE_FACTOR, float, 0.7f, value>=0.5f && value<=1.0f, --pre-factor);
 CLDEFINEASSIGNMENT( C_Il, std::string, "", 1, -i);
 CLDEFINEASSIGNMENT( C_Iu, std::string, "", 1, -I);
 CLDEFINEASSIGNMENT( C_D0, float, 0.0f, value>0.0f && value<50.0f, --d0);
@@ -67,16 +68,16 @@ CLDEFINEASSIGNMENT( C_U, int, 0, value>0, -u);
 CLDEFINEASSIGNMENT( C_A, int, 0, value>=0 && value<csnnCScoreNormalization, -a);
 CLDEFINEASSIGNMENT( C_SYMMETRIC, int, 0, value==0 || value==1, --symmetric);
 CLDEFINEASSIGNMENT( C_REFINEMENT, int, csrOneSearch, value>=0 && value<csrnCSuperpRefinement, --refinement);
-CLDEFINEASSIGNMENT( C_DEPTH, int, csdDepthDefault, value>=0 && value<csdnCSuperpDepth, --depth);
+CLDEFINEASSIGNMENT( C_DEPTH, int, csdDepthDefault, value>=csdBenthic && value<csdnCSuperpDepth, --depth);
 CLDEFINEASSIGNMENT( C_GAPCOST, int, csgcGapCostDefault, value>=0 && value<csgcnCSuperpGapCost, --gapcost);
 CLDEFINEASSIGNMENT( C_TRIGGER, int, cstTriggerDefault, value>=0 && value<=100, --trigger);
 CLDEFINEASSIGNMENT( C_SEEDRULE, int, cssrSuperpSeedRuleDefault, value>=0 && value<cssrnCSuperpSeedRule, --seedrule);
 CLDEFINEASSIGNMENT( C_WINDOW, int, DEF_WINDOW_SIZE, value>=MIN_WINDOW_SIZE && value<=MAX_WINDOW_SIZE, --window);
-CLDEFINEASSIGNMENT( C_NBRANCHES, int, csnNbranchesDefault, value>=1 && value<=16, --nbranches);
+CLDEFINEASSIGNMENT( C_NBRANCHES, int, csnNbranchesDefault, value>=1 && value<=32, --nbranches);
 CLDEFINEASSIGNMENT( C_ADDSEARCHBYSS, int, 0, value==0 || value==1, --add-search-by-ss);
 CLDEFINEASSIGNMENT( C_NODETAILEDSEARCH, int, 0, value==0 || value==1, --no-detailed-search);
 CLDEFINEASSIGNMENT( C_CONVERGENCE, int, 18, value>=1 && value<=30, --convergence);
-CLDEFINEASSIGNMENT( C_SPEED, int, 9, value>=0 && value<=13, --speed);
+CLDEFINEASSIGNMENT( C_SPEED, int, 9, value>=-3 && value<=13, --speed);
 CLDEFINEASSIGNMENT( C_CP, int, 0, value==0 || value==1, --cp);
 CLDEFINEASSIGNMENT( C_MIRROR, int, 0, value==0 || value==1, --mirror);
 //Hidden (if any):

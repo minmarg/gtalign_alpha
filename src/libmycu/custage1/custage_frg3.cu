@@ -355,7 +355,16 @@ void stagefrg3::stagefrg3_extensive_frg_swift(
     const int minnsteps = 10 / fctdiv;
     int qrystepsz = GetFragStepSize_frg_shallow(qystr1len);
     int rfnstepsz = GetFragStepSize_frg_shallow(dbstr1len);
-    if(depth == CLOptions::csdDeep) {
+    if(depth == CLOptions::csdBenthic) {
+        qrystepsz = GetFragStepSize_frg_benthic(qystr1len);
+        rfnstepsz = GetFragStepSize_frg_benthic(dbstr1len);
+    } else if(depth == CLOptions::csdSub) {
+        qrystepsz = GetFragStepSize_frg_sub(qystr1len);
+        rfnstepsz = GetFragStepSize_frg_sub(dbstr1len);
+    } else if(depth == CLOptions::csdAbyss) {
+        qrystepsz = GetFragStepSize_frg_abyss(qystr1len);
+        rfnstepsz = GetFragStepSize_frg_abyss(dbstr1len);
+    } else if(depth == CLOptions::csdDeep) {
         qrystepsz = GetFragStepSize_frg_deep(qystr1len);
         rfnstepsz = GetFragStepSize_frg_deep(dbstr1len);
     } else if(depth == CLOptions::csdHigh) {

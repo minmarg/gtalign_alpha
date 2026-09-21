@@ -157,7 +157,7 @@ void stage2::run_stage2(
 
     if(check_for_low_scores && 0.0f < scorethld) {
         SetLowScoreConvergenceFlag<<<nblcks_scinit,nthrds_scinit,0,streamproc>>>(
-            scorethld, ndbCstrs, maxnsteps, wrkmemaux);
+            scorethld, 1.0f/*prefactor*/, ndbCstrs, maxnsteps, wrkmemaux);
     }
 }
 

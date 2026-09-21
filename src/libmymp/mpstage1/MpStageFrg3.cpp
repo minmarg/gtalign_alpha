@@ -158,8 +158,10 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
                     const int sloc = ((qi * maxnsteps_ + silimit *N2SCTS) * ndbCstrs_) * nTTranformMatrix;
                     #pragma omp simd aligned(wrkmemaux,wrkmemtmibest:memalignment)
                     for(int ri = istr0; ri < istre; ri++) {
+                        int cf = (int)wrkmemaux[mloc + tawmvConverged * ndbCstrs_ + ri];
+                        wrkmemaux[mloc + tawmvConverged * ndbCstrs_ + ri] = (float)
+                            (cf & (~(CONVERGED_FRAGREF_bitval|CONVERGED_SCOREDP_bitval|CONVERGED_NOTMPRG_bitval)));
                         wrkmemaux[mloc + tawmvBestScore * ndbCstrs_ + ri] = 0.0f;
-                        wrkmemaux[mloc + tawmvConverged * ndbCstrs_ + ri] = 0.0f;
                         wrkmemaux[mloc + tawmvNAlnPoss * ndbCstrs_ + ri] = 0.0f;
                         //secondary scores:
                         wrkmemtmibest[sloc + (silimit * 0 + si) * ndbCstrs_ + ri] = 0.0f;
@@ -212,7 +214,7 @@ void MpStageFrg3::ScoreBasedOnFragmatching3Kernel(
                             ((dbstrlen <= LENTHR) || ((xsndx % 3) == 0));
 
                         //threshold calculated for the original lengths
-                        float d02 = GetD02(qrylen, dbstrlen);
+                        float d02 = GetD02(qrylen, dbstrlen, typeqry);
 
                         CalcLocalSimilarity2_frg2<nFRGS,DPSCDIMY,DPSCDIMX,memalignment>(
                             thrsimilarityperc, seedapproachstruct, ndbCposs_, dbxpad_,

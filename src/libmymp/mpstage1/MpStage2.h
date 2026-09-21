@@ -76,7 +76,7 @@ public:
         //execution for checking scores:
         if(check_for_low_scores && 0.0f < scorethld)
             SetLowScoreConvergenceFlagKernel(
-                scorethld,  querypmbeg_, bdbCpmbeg_, wrkmemaux_);
+                scorethld, 1.0f/*prefactor*/,  querypmbeg_, bdbCpmbeg_, wrkmemaux_);
     }
 
 protected:

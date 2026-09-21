@@ -61,7 +61,8 @@ __global__ void SetCurrentFragSpecs(
 // wrkmemaux, auxiliary working memory;
 // 
 __global__ void SetLowScoreConvergenceFlag(
-    const float scorethld,
+    const float prescore,
+    const float prefactor,
     const uint ndbCstrs,
     const uint maxnsteps,
     float* __restrict__ wrkmemaux)
@@ -71,6 +72,7 @@ __global__ void SetLowScoreConvergenceFlag(
     const uint dbstrndx = blockIdx.x * blockDim.x + threadIdx.x;
     const uint qryndx = blockIdx.y;//query serial number
     const uint sfragfct = 0;//fragment factor
+    float scorethld = prescore;
 
     if(ndbCstrs <= dbstrndx)
         //no sync below: exit
@@ -81,6 +83,12 @@ __global__ void SetLowScoreConvergenceFlag(
     //grand scores fragment factor position 0:
     float grand = wrkmemaux[mloc0 + tawmvGrandBest * ndbCstrs + dbstrndx];
 
+    if(prefactor < 1.0f) {
+        int qrydst = GetQueryDst(qryndx);
+        int typex = GetQueryStrField<INTYPE,pmv2D_Ins_Ch_Ord>(qrydst);
+        int type = GetMoleculeType(typex);
+        if(type == gtmtNA) scorethld *= prefactor;
+    }
     int qrylen = GetQueryLength(qryndx);
     int dbstrlen = GetDbStrLength(dbstrndx);
 

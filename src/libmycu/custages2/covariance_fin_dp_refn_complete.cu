@@ -102,11 +102,12 @@ void FinalFragmentBasedDPAlignmentRefinementPhase1(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
 
     //NOTE: use a different warp for structure-specific-formatted data;
 #if (CUS1_TBINITSP_COMPLETEREFINE_XDIM >= 64)
@@ -128,6 +129,7 @@ void FinalFragmentBasedDPAlignmentRefinementPhase1(
     sfragpos = sfragfct * sfragstep;
     dbstrlenorg = ((int*)ccmCache)[0];
     qrylenorg = ((int*)ccmCache)[2];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -144,7 +146,7 @@ void FinalFragmentBasedDPAlignmentRefinementPhase1(
 
 
     //threshold calculated for the original lengths
-    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg): GetD0(qrylenorg, dbstrlenorg);
+    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
     float dst32 = CP_LARGEDST;
@@ -309,11 +311,12 @@ void FinalFragmentBasedDPAlignmentRefinementPhase2(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
 
     //NOTE: use a different warp for structure-specific-formatted data;
 #if (CUS1_TBINITSP_COMPLETEREFINE_XDIM >= 64)
@@ -340,6 +343,7 @@ void FinalFragmentBasedDPAlignmentRefinementPhase2(
     if(sfragndx == 0) sfragndx++;
     dbstrlenorg = ((int*)ccmCache)[0];
     qrylenorg = ((int*)ccmCache)[2];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -357,7 +361,7 @@ void FinalFragmentBasedDPAlignmentRefinementPhase2(
 
 
     //threshold calculated for the original lengths
-    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg): GetD0(qrylenorg, dbstrlenorg);
+    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
     float dst32 = CP_LARGEDST;
@@ -520,11 +524,12 @@ void FinalFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        //GetQueryLenDst(qryndx, (int*)ccmCache + 2);
-        if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x == 0) ((int*)ccmCache)[2] = GetQueryLength(qryndx);
 
     //NOTE: use a different warp for structure-specific-formatted data;
 #if (CUS1_TBINITSP_COMPLETEREFINE_XDIM >= 64)
@@ -550,6 +555,7 @@ void FinalFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
     // sfragndx = (int)(ccmCache[tawmvSubFragNdx]);
     dbstrlenorg = ((int*)ccmCache)[0];
     qrylenorg = ((int*)ccmCache)[2];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -567,7 +573,7 @@ void FinalFragmentBasedDPAlignmentRefinementPhase2_fullsearch(
 
 
     //threshold calculated for the original lengths
-    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg): GetD0(qrylenorg, dbstrlenorg);
+    const float d0 = D0FINAL? GetD0fin(qrylenorg, dbstrlenorg, type): GetD0(qrylenorg, dbstrlenorg, type);
     const float d02 = SQRD(d0);
     const float d82 = GetD82(qrylenorg, dbstrlenorg);
     float dst32 = CP_LARGEDST;

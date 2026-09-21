@@ -1,3 +1,9 @@
+1.1, September 2026
+
+* Increased superposition search depth for highest accuracy and sensitivity (--depth={a,b,c} and --speed={a,b,c})
+* Implemented separate provisional scoring for proteins and nucleic acids
+* CPU version bugfix (v1.0) when using the default --seedrule
+
 1.0, May 2026
 
 * Support for nucleic acids

@@ -75,16 +75,19 @@ void FindGaplessAlignedFragment(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)ccmCache);
-        GetQueryLenDst(qryndx, (int*)ccmCache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)ccmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)ccmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)ccmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x < 2) GetQueryLenDst(qryndx, (int*)ccmCache + 2);
 
     __syncthreads();
 
 
     dbstrlen = ((int*)ccmCache)[0]; dbstrdst = ((int*)ccmCache)[1];
     qrylen = ((int*)ccmCache)[2]; qrydst = ((int*)ccmCache)[3];
+    const int type = GetMoleculeType(((int*)ccmCache)[4]);
 
     __syncthreads();
 
@@ -101,7 +104,7 @@ void FindGaplessAlignedFragment(
     const float nalnposs = (float)GetNAlnPoss(qrylen, dbstrlen, qrypos, rfnpos, arg1, arg2, arg3);
 
     //threshold calculated for the original lengths
-    const float d0 = GetD0(qrylen, dbstrlen);
+    const float d0 = GetD0(qrylen, dbstrlen, type);
     const float d02 = SQRD(d0);
     float dst32 = CP_LARGEDST;
     float best = 0.0f;//best score obtained

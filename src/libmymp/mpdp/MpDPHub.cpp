@@ -167,6 +167,8 @@ void MpDPHub::ExecDPwBtck128xKernel(
                         const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                         const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                         const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                        const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                        const int type = GetMoleculeType(typexr);
 
                         //lastydiagnum, last block diagonal serial number along y axis:
                         //each division separates a number of diagonals (nsepds);
@@ -242,8 +244,8 @@ void MpDPHub::ExecDPwBtck128xKernel(
                         float *pdiag1 = diag1;
                         float *pdiag2 = diag2;
                         float d02;
-                        if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen);
-                        else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen);
+                        if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen, type);
+                        else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen, type);
 
                         //start calculations for this position with Nx unrolling
                         for(int i = 0; i < ilim/*DIMX*/; i++)
@@ -468,6 +470,8 @@ void MpDPHub::ExecDPScore128xKernel(
                         const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                         const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                         const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                        const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                        const int type = GetMoleculeType(typexr);
 
                         //lastydiagnum, last block diagonal serial number along y axis:
                         //each division separates a number of diagonals (nsepds);
@@ -536,7 +540,7 @@ void MpDPHub::ExecDPScore128xKernel(
 
                         float *pdiag1 = diag1;
                         float *pdiag2 = diag2;
-                        float d02 = GetD02/*_dpscan*/(qrylen, dbstrlen);
+                        float d02 = GetD02/*_dpscan*/(qrylen, dbstrlen, type);
 
                         //start calculations for this position with Nx unrolling
                         for(int i = 0; i < ilim/*DIMX*/; i++)
@@ -773,6 +777,8 @@ void MpDPHub::ExecDPTFMSSwBtck128xKernel(
                         const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                         const int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
                         const int dbstrdst = PMBatchStrData::GetAddressAt(bdbCpmbeg, ri);
+                        const int typexr = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(bdbCpmbeg, dbstrdst);
+                        const int type = GetMoleculeType(typexr);
 
                         //lastydiagnum, last block diagonal serial number along y axis:
                         //each division separates a number of diagonals (nsepds);
@@ -856,8 +862,8 @@ void MpDPHub::ExecDPTFMSSwBtck128xKernel(
                         float *pdiag1 = diag1;
                         float *pdiag2 = diag2;
                         float d02;
-                        if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen);
-                        else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen);
+                        if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen, type);
+                        else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen, type);
 
                         //start calculations for this position with Nx unrolling
                         for(int i = 0; i < ilim/*DIMX*/; i++)
@@ -1409,6 +1415,7 @@ void MpDPHub::ExecDPSSLocal128xKernel(
 
                                 //NOTE: match score:
                                 val1 = (float)((qrySS[pi] == rfnSS[pi+i]) * 2) - 1.0f;
+                                if(qrySS[pi] == pmnasUNPAIRED || rfnSS[pi+i] == pmnasUNPAIRED) val1 *= 0.4f;
 
                                 //MM state update (diagonal direction)
                                 val1 += pdiag2[lfDgNdx<DIMD1>(dpdsssStateMM, pi+1)];

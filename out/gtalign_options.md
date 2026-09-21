@@ -1,6 +1,6 @@
 ```
 
-gtalign 1.0.1 (compiled with GPU support)
+gtalign 1.1.0 (compiled with GPU support)
 
 GTalign, HPC macromolecular structure alignment, superposition and search tool.
 (C)2021-2026 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University
@@ -137,6 +137,8 @@ Similarity pre-screening options:
                             0, all pairs are subject to further processing.
                             RECOMMENDED: 0.3-0.4 for proteins; 0.2 for RNAs.
                         Default=0.4
+--pre-factor=<factor>       Nucleic acid --pre-score scaling factor [0.5-1].
+                        Default=0.7
 
 Per-pair computation options:
 --symmetric                 Always produce symmetric alignments for the same
@@ -145,6 +147,7 @@ Per-pair computation options:
                             Difference between 3 and 1 in TM-score is ~0.001.
                         Default=1
 --depth=<code>              Superposition search depth:
+                            a: benthic; b: sub; c: abyss;
                             0: deep; 1: high; 2: medium; 3: shallow.
                         Default=2
 --gapcost=<penalty_code>    Gap cost used to estimate local similarity for
@@ -164,7 +167,7 @@ Per-pair computation options:
 --window=<size>             Initial window size (in residues) used to analyze
                             superposition candidates {256,512}.
                         Default=256
---nbranches=<number>        Number [3,16] of independent top-performing
+--nbranches=<number>        Number [3,32] of independent top-performing
                             branches identified during superposition search to
                             explore in more detail.
                         Default=5
@@ -180,6 +183,9 @@ Per-pair computation options:
                             expense of optimality (larger values => faster;
                             NOTE: the pre-screening options are not affected;
                             NOTE: settings override specified options):
+                             a: --depth=a --trigger=0 --nbranches=32 --add-search-by-ss
+                             b: --depth=b --trigger=0 --nbranches=32 --add-search-by-ss
+                             c: --depth=c --trigger=0 --nbranches=32 --add-search-by-ss
                              0: --depth=0 --trigger=0 --nbranches=16 --add-search-by-ss
                              1: --depth=0 --trigger=0
                              2: --depth=0 --trigger=20
@@ -230,8 +236,8 @@ HPC options:
                             NOTE: Large values greatly reduce #structure pairs
                             processed in parallel.
                         Default=4000
---dev-min-length=<length>   Minimum length [3,32767] for reference structures.
-                            References shorter than this specified value will
+--dev-min-length=<length>   Minimum length [3,32767] for structures.
+                            Structures shorter than this specified value will
                             be skipped.
                         Default=20
 --no-file-sort              Do not sort files by size. Data locality can be

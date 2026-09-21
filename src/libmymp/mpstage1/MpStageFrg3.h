@@ -81,9 +81,10 @@ public:
     virtual void Run() {
         const int simthreshold = CLOptions::GetC_TRIGGER();
         static const float thrsimilarityperc = (float)simthreshold / 100.0f;
+        static const int seedapproachstruct = CLOptions::GetC_SeedRuleValue();
         static const float locgapcost = CLOptions::GetC_GapCost();
         //fill in DP matrix with local similarity scores:
-        if(0.0f < thrsimilarityperc)
+        if(0.0f < thrsimilarityperc || seedapproachstruct)
             dphub_.ExecDPSSLocal128xKernel(
                 locgapcost,
                 querypmbeg_, bdbCpmbeg_,

@@ -134,16 +134,19 @@ void ExecCompleteDPwBtck512x(
 
     //NOTE: pps2DLen and pps2DDist assumed to be adjacent: see PM2DVectorFields.h!
     //reuse ccmCache
-    if(threadIdx.x < 2) {
-        GetDbStrLenDst(dbstrndx, (int*)tfmCache);
-        GetQueryLenDst(qryndx, (int*)tfmCache + 2);
+    if(threadIdx.x == 0) {
+        ((int*)tfmCache)[0] = GetDbStrLength(dbstrndx);
+        ((int*)tfmCache)[1] = dbstrdst = GetDbStrDst(dbstrndx);
+        ((int*)tfmCache)[4] = GetDbStrField<INTYPE,pmv2D_Ins_Ch_Ord>(dbstrdst);
     }
+    if(threadIdx.x < 2) GetQueryLenDst(qryndx, (int*)tfmCache + 2);
 
     __syncthreads();
 
     //NOTE: no bank conflict when two threads from the same warp access the same address;
     dbstrlen = ((int*)tfmCache)[0]; dbstrdst = ((int*)tfmCache)[1];
     qrylen = ((int*)tfmCache)[2]; qrydst = ((int*)tfmCache)[3];
+    const int type = GetMoleculeType(((int*)tfmCache)[4]);
 
     __syncthreads();
 
@@ -189,8 +192,8 @@ void ExecCompleteDPwBtck512x(
     float *pdiag1 = diag1Cache;
     float *pdiag2 = diag2Cache;
     float d02;
-    if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen);
-    else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen);
+    if(D02IND == D02IND_SEARCH) d02 = GetD02(qrylen, dbstrlen, type);
+    else if(D02IND == D02IND_DPSCAN) d02 = GetD02_dpscan(qrylen, dbstrlen, type);
 
     // (x,y) is the bottom-left corner (x,y) coordinates in DP matrix
     for(int y = DDIM - 1; y+1-DDIM < qrylen; y += DDIM)

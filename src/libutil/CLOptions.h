@@ -127,6 +127,9 @@ enum TCSuperpRefinement {
     csrnCSuperpRefinement
 };
 enum TCSuperpDepth {
+    csdBenthic,
+    csdSub,
+    csdAbyss,
     csdDeep,
     csdHigh,
     csdMedium,
@@ -184,6 +187,7 @@ CLDECLAREOPTION( I_SPLIT, int, int, );
 CLDECLAREOPTION( I_SUPERP, int, int, );
 CLDECLAREOPTION( P_PRE_SIMILARITY, float, float, );
 CLDECLAREOPTION( P_PRE_SCORE, float, float, );
+CLDECLAREOPTION( P_PRE_FACTOR, float, float, );
 CLDECLAREOPTION( C_Il, std::string, std::string, );
 CLDECLAREOPTION( C_Iu, std::string, std::string, );
 CLDECLAREOPTION( C_D0, float, float, );
