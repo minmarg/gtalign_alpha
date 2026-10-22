@@ -1,6 +1,6 @@
 ```
 
-gtalign 1.1.0 (compiled with GPU support)
+gtalign 1.1.2 (compiled with GPU support)
 
 GTalign, HPC macromolecular structure alignment, superposition and search tool.
 (C)2021-2026 Mindaugas Margelevicius, Institute of Biotechnology, Vilnius University

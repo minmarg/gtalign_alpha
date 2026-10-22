@@ -1,3 +1,7 @@
+1.1.2, October 2026
+
+* Minor fix to the --pre-factor option assignment
+
 1.1, September 2026
 
 * Increased superposition search depth for highest accuracy and sensitivity (--depth={a,b,c} and --speed={a,b,c})

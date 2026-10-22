@@ -747,7 +747,7 @@ printf(" %f %f %f   %d %d %d\n",sum1,sum2,sum3, sum1==sum2,sum1==sum3,sum2==sum3
         }
 
         if( !prefactor.empty()) {
-            if( mystring2float(f, prescore, "Invalid argument of option --pre-factor."))
+            if( mystring2float(f, prefactor, "Invalid argument of option --pre-factor."))
                 return EXIT_FAILURE;
             CLOPTASSIGN(P_PRE_FACTOR, f);
         }

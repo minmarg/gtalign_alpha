@@ -1233,7 +1233,8 @@ void MpStage1::SetLowScoreConvergenceFlagKernel(
     const int chunksize = (int)mymin(chunksize_helper, (size_t)MPS1_TBSP_SCORE_SET_CHSIZE);
 
     //NOTE: constant member pointers are shared by definition;
-    #pragma omp parallel num_threads(nthreads) default(shared)
+    #pragma omp parallel num_threads(nthreads) default(shared) \
+        shared(scorethld)
     {
         //initialize best scores
         #pragma omp for collapse(2) schedule(dynamic, chunksize)
@@ -1247,7 +1248,7 @@ void MpStage1::SetLowScoreConvergenceFlagKernel(
                 const int qrydst = PMBatchStrData::GetAddressAt(querypmbeg, qi);
                 const int typexq = PMBatchStrData::GetFieldAt<INTYPE,pmv2D_Ins_Ch_Ord>(querypmbeg, qrydst);
                 const int typeqry = GetMoleculeType(typexq);
-                if(prefactor < 1.0f && typeqry == gtmtNA) scorethld *= prefactor;
+                if(prefactor < 1.0f && typeqry == gtmtNA) scorethld = prescore * prefactor;
                 #pragma omp simd aligned(bdbCpmbeg,wrkmemaux:memalignment)
                 for(int ri = istr0; ri < istre; ri++) {
                     int dbstrlen = PMBatchStrData::GetLengthAt(bdbCpmbeg, ri);
